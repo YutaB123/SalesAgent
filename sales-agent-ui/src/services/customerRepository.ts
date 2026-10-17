@@ -8,6 +8,8 @@ export interface CustomerRepository {
   save(customer: TrackedCustomer): TrackedCustomer[];
   remove(customerId: string): TrackedCustomer[];
   appendCall(customerId: string, entry: CustomerCallHistory): TrackedCustomer[];
+  /** Update a few fields on a customer (used to copy a post-call report onto the record). */
+  patch(customerId: string, fields: Partial<Pick<TrackedCustomer, "purchaseStage" | "readiness" | "followUpDate" | "needs" | "concerns" | "notes">>): TrackedCustomer[];
   /** Fill in a saved call's summary, concerns and next steps once the post-call report is ready. */
   updateCall(customerId: string, callId: string, patch: Partial<Pick<CustomerCallHistory, "summary" | "concerns" | "nextSteps">>): TrackedCustomer[];
 }
@@ -94,6 +96,11 @@ export const customerRepository: CustomerRepository = {
         callHistory: [entry, ...item.callHistory],
       };
     });
+    write(updated);
+    return updated;
+  },
+  patch(customerId, fields) {
+    const updated = read().map((item) => item.id === customerId ? { ...item, ...fields } : item);
     write(updated);
     return updated;
   },

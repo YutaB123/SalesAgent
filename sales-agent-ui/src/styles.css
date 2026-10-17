@@ -83,3 +83,34 @@
 .report-row{font-size:14px;line-height:1.5}
 .report-row b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#7a869a;margin-bottom:2px}
 .report-quote{color:#7a869a;font-size:12px;font-style:italic}
+/* Customer tracking: keep readiness tiers and follow-up urgency visually distinct. */
+.tracked-customer-groups{display:grid;gap:9px;margin-top:12px}
+.tracked-customer-group{min-width:0}
+.customer-tier-toggle{display:flex;align-items:center;gap:7px;width:100%;padding:5px 2px 7px;border:0;background:transparent;color:#30304f;text-align:left;cursor:pointer}
+.customer-tier-toggle>svg{flex:0 0 auto;color:#7653df;transition:transform .15s ease}
+.customer-tier-toggle>svg.collapsed{transform:rotate(-90deg)}
+.customer-tier-toggle>strong{font-size:10px;font-weight:800}
+.customer-tier-toggle>.tier-range{border-radius:10px;padding:3px 7px;background:#f0eaff;color:#7049d8;font-size:8px;font-weight:800;white-space:nowrap}
+.customer-tier-toggle>small{margin-left:auto;color:#929bb0;font-size:8px;white-space:nowrap}
+.tracked-customer-group .tracked-customer-list{gap:5px}
+.tracked-customer-row{min-width:0;padding:8px 7px;gap:8px;border-color:#efedf5}
+.tracked-customer-copy{flex:1}
+.tracked-customer-copy em.followup-urgency{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f1f0f5;color:#69758b}
+.tracked-customer-copy em.urgency-overdue{background:#fff0ef;color:#bd4f51}
+.tracked-customer-copy em.urgency-today{background:#fff5df;color:#a46c13}
+.tracked-customer-copy em.urgency-upcoming{background:#edf4ff;color:#3974c8}
+.tracked-customer-copy em.urgency-open-no-date{background:#f2edff;color:#7049d8}
+.readiness-score-display{display:grid;justify-items:end;gap:2px;flex:0 0 auto;color:#7049d8;font-size:10px;font-weight:800;white-space:nowrap}
+.readiness-score-display small{color:#99a1b1;font-size:7px;font-weight:500}
+.tracking-profile .intent-pill{max-width:210px;white-space:nowrap}
+.tracking-profile .intent-pill.urgency-overdue{background:#fff0ef;color:#bd4f51}
+.tracking-profile .intent-pill.urgency-today{background:#fff5df;color:#a46c13}
+.tracking-profile .intent-pill.urgency-upcoming{background:#edf4ff;color:#3974c8}
+.tracking-profile .intent-pill.urgency-open-no-date{background:#f2edff;color:#7049d8}
+.customer-readiness{display:grid;gap:10px}
+.readiness-score-control{display:flex;align-items:center;gap:9px;color:#7d879a;font-size:9px;font-weight:700}
+.readiness-score-control select{min-width:0;flex:1;padding:8px 10px;border:1px solid #e5e1f0;border-radius:8px;background:#fff;color:#51466e;font:inherit;font-size:9px;outline:none}
+.readiness-score-control select:focus{border-color:#b8a4ec;box-shadow:0 0 0 3px #7955e012}
+.readiness-scale{gap:8px}
+@media(max-width:900px){.customer-tier-toggle>small{font-size:8px}.tracked-customer-row{flex-wrap:nowrap}.tracked-customer-row>svg{display:block}.readiness-score-display{margin-left:auto}}
+@media(max-width:620px){.tracked-customer-row{align-items:center;flex-wrap:nowrap}.tracked-customer-row>svg{display:block}.customer-tier-toggle>strong{font-size:9px}.customer-tier-toggle>small{font-size:7px}.tracking-profile .intent-pill{white-space:normal;text-align:right}.readiness-scale{font-size:7px}}

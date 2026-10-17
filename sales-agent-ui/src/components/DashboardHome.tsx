@@ -49,7 +49,7 @@ export function DashboardHome({
   selectedProductId: string;
   onSelectCustomer: (id: string) => void;
   onSelectProduct: (id: string) => void;
-  onStart: (customerId: string, productId: string) => void;
+  onStart: (productId: string) => void;
   onNavigate: (page: "customer-tracking" | "history" | "new-conversation") => void;
   onAddProduct: () => void;
 }) {
@@ -64,7 +64,7 @@ export function DashboardHome({
         <span className="dashboard-greeting">SALES CONVERSATION WORKSPACE</span>
         <h1>Ready for your next conversation?</h1>
         <p>Choose a customer and product, then open your sales workspace.</p>
-        <button className="primary-button" onClick={() => selectedCustomer && selectedProduct && onStart(selectedCustomer.id, selectedProduct.id)} disabled={!selectedCustomer || !selectedProduct}>
+        <button className="primary-button" onClick={() => selectedProduct && onStart(selectedProduct.id)} disabled={!selectedProduct}>
           Start a Conversation <ArrowRight size={16}/>
         </button>
       </div>
