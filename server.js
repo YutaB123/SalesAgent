@@ -3,6 +3,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
 
 // optional .env file with ANTHROPIC_API_KEY=...
 try {
@@ -37,7 +38,7 @@ ${cards.map(c => `- ${c.id}: ${c.title} (${c.meaning})${c.kind === "question" ? 
 Rules:
 - Never match a card for a rep line. Ignore greetings and small talk.
 - If the customer clearly asks not to be contacted again, always choose "hard-no".
-- Pick the single best card, or "none" only if the customer said nothing that needs a response (small talk, "okay", agreeing).
+- Pick the single best card, or "none" if the customer is not pushing back and not asking anything. "none" is the right answer when the customer is only ANSWERING the rep's question (sharing how they use their phone, their name, what they pay), making small talk, saying "okay", or agreeing.
 - ALWAYS HAVE AN ANSWER: if the customer asks any question and no card fits, choose card "answer" and write its agree/points/ask yourself. Answer ONLY from the plan sheet. If the plan sheet does not say, agree = "Good question.", points = say you will confirm and send it in writing, never guess a fact, price, policy or date.
 - For [question] cards: "agree" is the DIRECT ANSWER to what they asked (answer first, no filler), "points" add the strongest relevant promotion or plan fact, "ask" moves the conversation forward.
 - GOAL of the card: give the rep the talking points that move this customer toward yes in this call, fitted to what the customer JUST said and the conversation so far. Not random facts: every bullet must answer this customer's objection.
@@ -98,11 +99,71 @@ async function match(body) {
   return { speaker, card: valid ? json.card : "none", agree: valid ? clean(json.agree) : "", points, ask: valid ? clean(json.ask) : "" };
 }
 
+const UI_DIR = path.join(__dirname, "sales-agent-ui", "dist");
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".json": "application/json", ".woff2": "font/woff2" };
+const isLocal = req => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
+
+// Serves the built React app. Unknown non-API paths fall back to index.html so client-side routing works.
+function serveUi(req, res) {
+  if (!fs.existsSync(path.join(UI_DIR, "index.html"))) return false;
+  const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+  let file = path.normalize(path.join(UI_DIR, pathname === "/" ? "index.html" : pathname));
+  if (!file.startsWith(UI_DIR)) { res.writeHead(403); res.end(); return true; }
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(UI_DIR, "index.html");
+  res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream" });
+  res.end(fs.readFileSync(file));
+  return true;
+}
+
+// Runs analysis_bridge.py (Eva's call_analysis.py, powered by Claude). Tries python3, then python.
+function runAnalysis(payload) {
+  const tryRun = cmd => new Promise((resolve, reject) => {
+    const child = spawn(cmd, [path.join(__dirname, "analysis_bridge.py")], { cwd: __dirname, env: process.env });
+    let out = "", err = "";
+    const timer = setTimeout(() => { child.kill(); reject(new Error("analysis timed out")); }, 90000);
+    child.stdout.on("data", d => out += d);
+    child.stderr.on("data", d => err += d);
+    child.on("error", e => { clearTimeout(timer); reject(Object.assign(e, { missing: e.code === "ENOENT" })); });
+    child.on("close", () => {
+      clearTimeout(timer);
+      try { const j = JSON.parse(out); j.error ? reject(new Error(j.error)) : resolve(j); }
+      catch { reject(new Error(err.trim().split("\n").pop() || "analysis failed")); }
+    });
+    child.stdin.end(JSON.stringify(payload));
+  });
+  return tryRun(process.env.PYTHON || "python3").catch(e => e.missing ? tryRun("python") : Promise.reject(e));
+}
+
 http.createServer(async (req, res) => {
   if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
-  if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+  // The original single-page live coach, kept as a fallback at /classic.
+  if (req.method === "GET" && req.url === "/classic") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
+  }
+  // The card list as JSON, so the React app uses the same cards.js as the server.
+  if (req.method === "GET" && req.url === "/api/cards") {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ cards: CARDS }));
+  }
+  // Post-call report (Eva's call_analysis.py, run with Claude).
+  //   POST /api/post-call  { "lines": [ { "speaker": "rep"|"customer", "text": "..." } ] }
+  if (req.method === "POST" && req.url === "/api/post-call") {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    try {
+      if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
+      const { lines } = JSON.parse(raw);
+      if (!Array.isArray(lines) || !lines.length) throw new Error("send {\"lines\": [{speaker, text}, ...]}");
+      const report = await runAnalysis({ lines, product_context: PLAN_SHEET });
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ report }));
+    } catch (e) {
+      console.error("post-call:", e.message);
+      res.writeHead(502, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
   }
   if (req.method === "GET" && req.url === "/cards.js") {
     res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" });
@@ -141,6 +202,7 @@ http.createServer(async (req, res) => {
   }
   // Local demo only: hands the Deepgram key to the page on localhost so the browser can stream audio directly.
   if (req.method === "GET" && req.url === "/api/dg-key") {
+    if (!isLocal(req)) { res.writeHead(403); return res.end(); }
     res.writeHead(DG_KEY ? 200 : 404, { "content-type": "application/json" });
     return res.end(JSON.stringify({ key: DG_KEY || null }));
   }
@@ -159,8 +221,14 @@ http.createServer(async (req, res) => {
     }
     return;
   }
+  if (req.method === "GET" && !req.url.startsWith("/api/") && serveUi(req, res)) return;
+  if (req.method === "GET" && req.url === "/") {   // no React build yet: fall back to the classic page
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
+  }
   res.writeHead(404); res.end();
 }).listen(PORT, () => {
-  console.log(`Rejection Coach: http://localhost:${PORT}`);
+  console.log(`Sales Agent: http://localhost:${PORT}   (classic live coach: /classic)`);
+  console.log(fs.existsSync(path.join(UI_DIR, "index.html")) ? "React UI: serving sales-agent-ui/dist" : "React UI not built yet: run  cd sales-agent-ui && pnpm install && pnpm build");
   console.log(KEY ? `Claude matching ON (${MODEL})` : "ANTHROPIC_API_KEY not set: falling back to keyword matching");
 });

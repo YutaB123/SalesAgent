@@ -11,13 +11,15 @@ export function FollowUpCard({task,onToggle}:{task:FollowUpTask;onToggle?:()=>vo
 export function ScoreRow({item}:{item:SellerScore}){return <div className="score-row"><div className="score-copy"><strong>{item.category}</strong><span>{item.reason}</span></div><div className="score-value">{item.score}<small>/5</small><div className="score-track"><i style={{width:`${item.score*20}%`}}/></div></div></div>}
 export function ConversationBubble({speaker,text,time,source="mock"}:{speaker:"customer"|"seller";text:string;time:string;source?:ConversationSource}){return <div className={`conversation-turn ${speaker}`}><span className="speaker-avatar">{speaker==="customer"?"C":"S"}</span><div className="bubble-content"><div className="bubble-meta"><strong>{speaker==="customer"?"Customer":"Sales rep"}</strong><time>{time}</time><span className={`turn-source ${source}`}>{source==="mock"?"MOCK":"LIVE"}</span></div><div className="bubble-text">{text}</div></div></div>}
 
-export function CallControls({status,error,onStart,onStop}:{status:ListeningStatus;error?:string;onStart:()=>void;onStop:()=>void}){
+export function CallControls({status,error,live=false,onStart,onStop}:{status:ListeningStatus;error?:string;live?:boolean;onStart:()=>void;onStop:()=>void}){
   const label=status==="listening"?"Listening":status==="error"?"Error":"Ready";
-  const detail=error??(status==="listening"?"Mock transcript is active. No audio is being recorded.":"Ready to start the mock transcript demo. No audio is being recorded.");
+  const detail=error??(live
+    ?(status==="listening"?"Listening to your microphone. Cards appear when the customer pushes back or asks a question.":"Put the call on speaker, then press Start Listening. Audio is sent to Deepgram for transcription.")
+    :(status==="listening"?"Mock transcript is active. No audio is being recorded.":"Ready to start the mock transcript demo. No audio is being recorded."));
   return <section className={`call-controls session-status-banner status-${status}`} aria-live="polite">
     <div className="session-status-copy"><span className="session-status-label"><i/>{label}</span><span className="session-status-detail">{detail}</span></div>
     <div className="session-mascot"><span>Here to help!</span><AssistantMascot/></div>
-    {status==="listening"?<button className="secondary-button" onClick={onStop}><Square size={14}/>Stop Listening</button>:<button className="primary-button" onClick={onStart}><Mic size={15}/>{status==="error"?"Retry Demo":"Start Listening"}</button>}
+    {status==="listening"?<button className="secondary-button" onClick={onStop}><Square size={14}/>Stop Listening</button>:<button className="primary-button" onClick={onStart}><Mic size={15}/>{status==="error"?(live?"Try again":"Retry Demo"):"Start Listening"}</button>}
   </section>;
 }
 

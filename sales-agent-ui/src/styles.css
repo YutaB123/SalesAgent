@@ -50,3 +50,36 @@
 @media(max-width:620px){.customer-form-grid{grid-template-columns:1fr}.customer-form-wide{grid-column:auto}.customer-record-actions{gap:3px}.customer-record-actions .stage-pill{max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.session-customer-picker{align-items:stretch;flex-direction:column}.session-customer-picker select{min-width:0}.customer-call-entry-heading{display:grid}.customer-dialog .product-dialog-footer>span{max-width:none}}
 .call-link-field{display:grid;gap:6px;max-width:420px;margin:0 0 12px;color:#655b7c;font-size:10px;font-weight:700}.call-link-field select,.call-create-fields input{min-width:0;padding:9px 10px;border:1px solid #e5def1;border-radius:8px;background:#fff;color:#4d4564;font:inherit;font-size:10px}.call-create-customer{display:grid;gap:10px;margin-top:17px;padding-top:15px;border-top:1px solid #eeeaf5}.call-create-customer>strong{color:#483e63;font-size:11px}.call-create-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.call-create-fields button{justify-self:start}.summary-transcript summary{cursor:pointer;color:#7451db;font-size:10px}.summary-transcript p{padding:8px 0;border-top:1px solid #efebf5;color:#615975;font-size:10px;line-height:1.55}.summary-transcript p b{display:block;color:#786d94}
 @media(max-width:620px){.call-create-fields{grid-template-columns:1fr}}
+
+/* ---- Live coach card (three numbered steps) ---- */
+.coach-card{--accent:#7049D8;--accent-soft:#F0EBFD;background:#fff;border:1px solid #e8edf5;border-left:8px solid var(--accent);border-radius:14px;padding:18px 22px 6px;box-shadow:0 6px 22px rgba(24,36,58,.08);animation:coach-pop .25s ease-out}
+.coach-card.question{--accent:#16a34a;--accent-soft:#e8f7ee}
+.coach-card.stop{--accent:#dc2626;--accent-soft:#fdecec;background:#fff8f8}
+@keyframes coach-pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.coach-tag{font:800 12px Manrope,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.coach-tailored{font-weight:600;letter-spacing:0;text-transform:none;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 9px;font-size:11px}
+.coach-step{display:flex;gap:14px;align-items:flex-start;margin:0 0 16px}
+.coach-step-n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;font:800 18px Manrope,sans-serif;display:grid;place-items:center;margin-top:2px}
+.coach-step-label{font:800 11px Manrope,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#7a869a;margin-bottom:3px}
+.coach-say,.coach-ask{margin:0;font:700 25px/1.25 Manrope,sans-serif;color:#18243a}
+.coach-say{color:var(--accent)}
+.coach-points{list-style:disc;margin:2px 0 0;padding-left:22px;font:700 21px/1.3 Manrope,sans-serif;color:#18243a}
+.coach-points li{margin:5px 0}
+.coach-points li::marker{color:var(--accent)}
+.live-bubble{opacity:.65;font-style:italic}
+.coach-waiting{border:1px dashed #cfd7e6;border-radius:14px;padding:22px;color:#7a869a;font-size:15px;text-align:center}
+
+/* ---- Phone call panel ---- */
+.phone-panel{margin:12px 0}
+.phone-toggle{border:1px solid #d9def0;background:#fff;color:#4b3aa8;border-radius:10px;padding:9px 14px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px}
+.phone-body{margin-top:10px;background:#fff;border:1px solid #e8edf5;border-radius:12px;padding:14px 16px}
+.phone-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.phone-row input{border:1px solid #d9def0;border-radius:8px;padding:9px 12px;font:inherit;min-width:190px}
+.phone-note{margin:6px 0;color:#5b6a82;font-size:13px;line-height:1.5}
+.phone-note code{background:#f1f4fa;padding:1px 5px;border-radius:5px}
+
+/* ---- Post-call report ---- */
+.report-grid{display:grid;gap:10px;margin-top:6px}
+.report-row{font-size:14px;line-height:1.5}
+.report-row b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#7a869a;margin-bottom:2px}
+.report-quote{color:#7a869a;font-size:12px;font-style:italic}

@@ -8,6 +8,8 @@ export interface CustomerRepository {
   save(customer: TrackedCustomer): TrackedCustomer[];
   remove(customerId: string): TrackedCustomer[];
   appendCall(customerId: string, entry: CustomerCallHistory): TrackedCustomer[];
+  /** Fill in a saved call's summary, concerns and next steps once the post-call report is ready. */
+  updateCall(customerId: string, callId: string, patch: Partial<Pick<CustomerCallHistory, "summary" | "concerns" | "nextSteps">>): TrackedCustomer[];
 }
 
 const sampleCustomers: TrackedCustomer[] = [
@@ -90,6 +92,19 @@ export const customerRepository: CustomerRepository = {
         concerns: entry.concerns.length ? entry.concerns.join(", ") : item.concerns,
         summary: entry.summary || "Transcript saved for review; no generated summary is available.",
         callHistory: [entry, ...item.callHistory],
+      };
+    });
+    write(updated);
+    return updated;
+  },
+  updateCall(customerId, callId, patch) {
+    const updated = read().map((item) => {
+      if (item.id !== customerId || !item.callHistory.some((call) => call.id === callId)) return item;
+      return {
+        ...item,
+        summary: patch.summary || item.summary,
+        concerns: patch.concerns?.length ? patch.concerns.join(", ") : item.concerns,
+        callHistory: item.callHistory.map((call) => call.id === callId ? { ...call, ...patch } : call),
       };
     });
     write(updated);

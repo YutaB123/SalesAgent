@@ -1,6 +1,16 @@
 # SalesAgent: Rejection Coach
 
-The separate React dashboard prototype is in [`sales-agent-ui/`](sales-agent-ui/README.md). It has its own Vite setup and can be run from that directory; the existing Rejection Coach app and server remain at the repository root.
+**One app, one server.** `node server.js` serves the React dashboard at http://localhost:3000, the coaching API behind it, the phone-call module, and the post-call report. Everything the team built is wired together:
+
+| Piece | Owner | Where | What it does in the merged app |
+|---|---|---|---|
+| Live coach and cards | Yuta | `server.js`, `cards.js`, `sales-agent-ui/src/services/liveCoach.ts` | Transcribes the call (Deepgram), picks a card (Claude), shows it in the **Ongoing conversation** screen |
+| Dashboard UI | Jin | `sales-agent-ui/` | The app shell: home, new conversation, summary, customers, history |
+| Phone calling | Zoe | `communications/` | **Call the customer by phone** panel: dials through Photon/LiveKit and gives separate rep and customer audio |
+| Post-call report | Eva / Miao | `call_analysis.py`, `analysis_bridge.py` | The **Call summary** report with evidence quotes and scores, written by Claude |
+| Database | Eva / Miao | `supabase/` | Schema and fictional demo data. **Not connected to the app yet** (see below). |
+
+The original single-page live coach is still at http://localhost:3000/classic as a fallback.
 
 A live coaching tool for brand new sales reps. It listens to a sales call, works out who is talking (rep or customer), and when the customer pushes back or asks a question it shows a short three-step card on screen: what to **say**, what to **explain**, and what to **ask**.
 
@@ -15,10 +25,12 @@ A live coaching tool for brand new sales reps. It listens to a sales call, works
 
 ## What you need
 
-- [Node.js](https://nodejs.org) 18 or newer (no packages to install)
+- [Node.js](https://nodejs.org) 18 or newer, and [pnpm](https://pnpm.io) (or `npx pnpm`) to build the UI
+- [Python](https://www.python.org) 3.11 or newer (for the post-call report; no packages needed for that)
 - Google Chrome or Microsoft Edge
 - An [Anthropic API key](https://console.anthropic.com)
 - A [Deepgram API key](https://console.deepgram.com) (free starter credit for new accounts)
+- Optional, only for phone calling: Photon and LiveKit credentials (see [communications/README.md](communications/README.md))
 
 ## Run it
 
@@ -29,14 +41,29 @@ A live coaching tool for brand new sales reps. It listens to a sales call, works
    DEEPGRAM_API_KEY=your_deepgram_key
    ```
 
-2. Start the server from this folder:
+2. Build the dashboard once (and again after changing anything in `sales-agent-ui/`):
+
+   ```
+   cd sales-agent-ui
+   pnpm install
+   pnpm build
+   cd ..
+   ```
+
+3. Start the server from the repo root:
 
    ```
    node server.js
    ```
 
-3. Open **http://localhost:3000** in Chrome or Edge. The header should read `Voice: Deepgram · Matching: Claude`.
-4. Put the phone call on **speaker** near your laptop, click the green mic, and allow microphone access.
+4. Open **http://localhost:3000** in Chrome or Edge. Go to **New Conversation**, put the phone call on **speaker** near your laptop, press **Start Listening**, and allow the microphone. Settings shows "Conversation capture: Connected" when both keys work.
+5. Press **End Conversation** when the call is over. The **Call summary** page writes the report (about 10 to 15 seconds) and saves the call to the selected customer in this browser.
+
+**Developing the UI?** Run `node server.js` in one terminal and `pnpm dev` inside `sales-agent-ui/` in another, then open http://localhost:5173. Vite forwards `/api` and `/communications` to the server.
+
+**Phone calling (optional).** Fill in the Photon and LiveKit values in `.env`, then in a second terminal run `python communications/service.py` (first-time setup is in `communications/README.md`). In the app, open **Call the customer by phone** on the conversation screen: connect your microphone, enter a number, and call. A headset is recommended. When a call is dialled, the rep and the customer each get their own audio track, and each is transcribed separately, so rep and customer labels are exact instead of guessed from voices.
+
+**Without any keys,** the app falls back to Jin's original demo: a fake transcript and fixed example suggestions.
 
 ## Try it without a call
 
@@ -80,6 +107,19 @@ For one line at a time during a live call, use `POST /api/match` with `{ "text",
 
 The cards live in `cards.js`. To change wording or add a card, edit that file and restart the server. No other code changes.
 
+## Status and known gaps
+
+| Area | State |
+|---|---|
+| Live microphone coaching in the React app | Tested end to end with a recorded two-voice call (headless browser): transcript, speaker labels, cards, report |
+| Typed customer lines | Work the same way as spoken ones |
+| Post-call report in **Call summary** | Tested. Claude writes it; Eva's validator rejects any report whose quotes do not match the call, and the bridge retries once |
+| Phone calling (Photon / LiveKit) | Wired into the UI and the audio goes through the same transcriber, **but not tested here**: it needs real Photon and LiveKit credentials and a manual smoke test |
+| Database (Supabase) | **Not connected to the app.** Customers and call history are saved in the browser (`localStorage`) by Jin's `customerRepository`. Writing calls to Supabase needs a server-side secret key and the adapter described in `supabase/CALL_ANALYSIS_MAPPING.md`. |
+| Customer and product data | Fictional demo data |
+
+More API routes added by the merge: `GET /api/cards` (the cards as JSON), `POST /api/post-call` (the report; body `{ "lines": [{ "speaker": "rep" | "customer", "text": "..." }] }`).
+
 ## If something is off
 
 | Problem | Fix |
@@ -101,8 +141,12 @@ The cards live in `cards.js`. To change wording or add a card, edit that file an
 | File | What it is |
 |---|---|
 | `cards.js` | All the coaching cards (edit this to change what reps see) |
-| `index.html` | The live app (chat, card display, microphone and Deepgram code) |
-| `server.js` | Small local server: serves the page, calls Claude, and exposes `/api/analyze` |
+| `index.html` | The original single-page live coach, kept at `/classic` |
+| `server.js` | The one server: serves the React app, calls Claude, exposes `/api/*`, proxies phone calling |
+| `sales-agent-ui/` | The React dashboard (Jin) with the live coach built into its conversation screen |
+| `analysis_bridge.py` | Runs Eva's `call_analysis.py` with Claude for the post-call report |
+| `communications/` | Photon / LiveKit phone calling (Zoe) |
+| `supabase/` | Database schema and seed (Eva / Miao) |
 | `demo-script.html` / `.pdf` | A demo call to read aloud |
 | `.env.example` | Template for your API keys |
 
