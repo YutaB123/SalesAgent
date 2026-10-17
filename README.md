@@ -131,6 +131,7 @@ More API routes added by the merge: `GET /api/cards` (the cards as JSON), `POST 
 
 ## Good to know
 
+- **Which Claude model writes the cards.** Default is `claude-sonnet-5-5` (about 1.4 seconds per card, and it follows the card-writing rules well). For the fastest and cheapest option set `CLAUDE_MODEL=claude-haiku-5-5` in `.env`; it is quicker but sometimes volunteers a competitor's lower price or states things the plan sheet does not say.
 - **Keys stay local.** `.env` is ignored by git. Never commit it.
 - **Deepgram key reaches the browser.** For a local demo, `server.js` hands the Deepgram key to the page on `localhost`. Do not deploy this publicly as-is. Move the Deepgram connection to the server first.
 - **Where the call goes.** Microphone audio is sent to Deepgram for transcription, and the transcript lines are sent to Anthropic to pick the card. Nothing is saved to disk by this app. Check your company's rules on recording and transcribing calls before using it with real customers.

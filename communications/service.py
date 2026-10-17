@@ -183,7 +183,10 @@ async def main():
     room = rtc.Room()
     stop = asyncio.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        asyncio.get_running_loop().add_signal_handler(sig, stop.set)
+        try:
+            asyncio.get_running_loop().add_signal_handler(sig, stop.set)
+        except NotImplementedError:
+            pass   # Windows has no asyncio signal handlers; Ctrl+C still stops the service
 
     def seller_state():
         global SELLER_READY

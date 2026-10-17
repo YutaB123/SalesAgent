@@ -47,6 +47,8 @@ export class DeepgramSession {
   async start(): Promise<void> {
     const ctx = new AudioContext({ sampleRate: 16000 });
     this.ctx = ctx;
+    // Browsers start an AudioContext paused when it is created outside a click (like a call-audio event). Wake it up.
+    if (ctx.state === "suspended") await ctx.resume();
     const moduleUrl = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
     await ctx.audioWorklet.addModule(moduleUrl);
     URL.revokeObjectURL(moduleUrl);

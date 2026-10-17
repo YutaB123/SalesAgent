@@ -84,7 +84,7 @@ const CARDS = [
     meaning: "A data question. Answer what you know, confirm the rest.",
     agree: "Yes, the plan has unlimited data.", points: ["I'll confirm any hotspot details in writing","Your price is locked for five years"], ask: "Do you use a hotspot?" },
   { id: "contract", kind: "question", title: "Contract / cancelling", keys: ["is there a contract","contract","cancel","cancellation","early termination","how long is the commitment","commitment","term of"],
-    meaning: "They worry about being stuck. Be straight and put it in writing.",
+    meaning: "They ask about the contract, how long the price lock lasts, what happens after it, or cancelling. Be straight; anything the plan sheet does not cover goes in writing.",
     agree: "Your price is locked for five years.", points: ["I'll send the cancellation terms in writing","Everything is in writing before you decide"], ask: "Want me to send them first?" },
   { id: "promo-end", kind: "question", title: "When does the offer end", keys: ["when does it end","when does the offer end","when does it expire","expire","how long is the offer","how long does the offer","deadline","end of the month","offer valid"],
     meaning: "They want the deadline. It's real, so say it plainly.",

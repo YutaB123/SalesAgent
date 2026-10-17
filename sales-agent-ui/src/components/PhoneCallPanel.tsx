@@ -32,6 +32,8 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
   onCallEnded: () => void;
 }) {
   const commsRef = useRef<Comms | null>(null);
+  const held = useRef<Partial<Record<CoachRole, MediaStreamTrack>>>({});   // audio we have but are not transcribing yet
+  const answered = useRef(false);                                          // true while an answered call is in progress
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
@@ -58,9 +60,19 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
         comms.addEventListener("status", (e) => setMessage((e as CustomEvent).detail.message));
         comms.addEventListener("error", (e) => setMessage((e as CustomEvent).detail.message));
         comms.addEventListener("playbackBlocked", () => setSoundBlocked(true));
-        comms.addEventListener("audioTrack", (e) => { const d = (e as CustomEvent).detail; onTrack.current(d.role as CoachRole, d.track as MediaStreamTrack); });
+        // Audio tracks show up while connecting and while ringing, but we only START listening once the customer answers.
+        comms.addEventListener("audioTrack", (e) => {
+          const d = (e as CustomEvent).detail;
+          held.current[d.role as CoachRole] = d.track as MediaStreamTrack;
+          if (answered.current) onTrack.current(d.role as CoachRole, d.track as MediaStreamTrack);   // answered already: start now
+        });
         comms.addEventListener("state", (e) => {
           const next = (e as CustomEvent).detail?.call?.state ?? "idle";
+          if (next === "answered" && !answered.current) {
+            answered.current = true;   // the customer picked up: start transcribing both sides
+            (["rep", "customer"] as CoachRole[]).forEach((role) => { const track = held.current[role]; if (track) onTrack.current(role, track); });
+          }
+          if (next === "ended" || next === "failed") { answered.current = false; delete held.current.customer; }   // keep the rep mic for the next call
           setCallState((previous) => { if (previous !== next && ["ended", "failed"].includes(next) && !["idle", "ended", "failed"].includes(previous)) onEnded.current(); return next; });
         });
         commsRef.current = comms;
@@ -98,7 +110,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
               {soundBlocked && <button className="secondary-button" onClick={enableSound}><Volume2 size={14} />Enable call sound</button>}
             </>}
           </div>
-          {phase === "connected" && <p className="phone-note">Call: <b>{callState}</b>. Use a headset so the customer's voice does not echo back.</p>}
+          {phase === "connected" && <p className="phone-note">{callState === "dialing" ? <>Calling… the app starts listening <b>when the customer answers</b>.</> : callState === "answered" ? <>Customer answered. <b>Listening to both sides.</b></> : <>Ready to call. The app starts listening when the customer answers.</>} Use a headset so the customer's voice does not echo back.</p>}
         </>}
       </div>}
     </section>

@@ -133,13 +133,15 @@ export class LiveCoach {
   /** The sentence is still being spoken: get a card up before they finish. */
   private onInterim(role: CoachRole, text: string, utt: Utterance): void {
     if (role === "rep") return;
+    // A keyword card goes up instantly (generic wording)...
     const keyword = matchKeywords(this.cards, text);
     if (keyword) {
       if (this.shown?.card.id !== keyword.id) this.show(keyword, contentOf(keyword), false);
       utt.cardId = keyword.id;
-      return;
+      if (keyword.stop) return;   // a hard no needs no tailoring
     }
-    if (!this.useClaude || utt.busy || utt.cardId || utt.calls >= 3) return;
+    // ...and Claude starts writing the real card from their words while they are still talking.
+    if (!this.useClaude || utt.busy || utt.calls >= 3) return;
     const n = wordCount(text);
     if (n < 4 || n < utt.lastLen + 3) return;
     utt.busy = true; utt.lastLen = n; utt.calls += 1;
@@ -147,7 +149,7 @@ export class LiveCoach {
       .then((out) => {
         utt.out = out; utt.outWords = n;
         const card = this.cards.find((c) => c.id === out.card);
-        if (card && out.speaker === "customer" && !utt.cardId) {
+        if (card && out.speaker === "customer") {
           utt.cardId = card.id;
           const content = toContent(out);
           this.show(card, content ?? contentOf(card), !!content);

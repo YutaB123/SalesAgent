@@ -16,12 +16,13 @@ try {
 const { CARDS } = require("./cards.js");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
-const MODEL = process.env.CLAUDE_MODEL || "claude-haiku-5-5";   // fast model for live calls
+const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
 const PORT = process.env.PORT || 3000;
 
 const PLAN_SHEET = `Fictional demo plan "Pink Plus": $65/mo per line, unlimited data, 5-year price lock, free streaming add-on.
 Plan is changed on one call, no store visit, no new SIM.
-PROMOTION (fictional): existing customers who switch to Pink Plus THIS MONTH get a $150 bill credit, and up to $300 of their remaining phone balance is paid off as bill credit. The promotion ends at the end of this month. The only condition is switching this month; everything is in writing.
+PROMOTION (fictional): existing customers who switch to Pink Plus THIS MONTH get a $150 bill credit, and up to $300 of their remaining phone balance is paid off as bill credit. The promotion ends at the end of this month. The only condition is switching this month; everything is in writing. No other discounts or price changes are available besides this promotion; the rep cannot lower the $65 price.
+NOT covered by this sheet (the rep must say they will confirm these in writing, never guess): what happens after the five-year price lock, taxes and fees, hotspot and roaming terms, cancellation terms, coverage at a specific address, device prices.
 (All of this is fictional, for a hackathon demo.)`;
 
 function systemPrompt(cards) {
@@ -32,43 +33,45 @@ Step 1: decide who said the new line.
 - "customer": the person being called. They answer, ask about their bill, push back, object, ask questions about the offer, agree or decline.
 Use the conversation flow: a question from the rep is usually followed by the customer's answer, and vice versa. Short replies like "okay" or "yeah" usually come from whoever was just asked something.
 
-Step 2: only if the speaker is the customer, decide whether the line contains an objection, a rejection, OR a question that matches one of these cards (cards marked [question] are for when the customer ASKS something):
-${cards.map(c => `- ${c.id}: ${c.title} (${c.meaning})${c.kind === "question" ? " [question]" : ""} Default talking points: ${c.example ? JSON.stringify(c.example) : ""}`).join("\n")}
+Step 2: only if the speaker is the customer, decide whether the line needs a coaching card. A card is needed when the customer pushes back, rejects, hesitates, OR asks a question. These card types are STRATEGIES. Pick the type that fits; the words on the card are written fresh from what the customer said (see Step 3).
+${cards.map(c => `- ${c.id}: ${c.title}${c.kind === "question" ? " [question]" : ""}. ${c.meaning}`).join("\n")}
 
-Rules:
-- Never match a card for a rep line. Ignore greetings and small talk.
+Choosing rules:
+- Never pick a card for a rep line. Ignore greetings and small talk.
 - If the customer clearly asks not to be contacted again, always choose "hard-no".
-- Pick the single best card, or "none" if the customer is not pushing back and not asking anything. "none" is the right answer when the customer is only ANSWERING the rep's question (sharing how they use their phone, their name, what they pay), making small talk, saying "okay", or agreeing.
-- ALWAYS HAVE AN ANSWER: if the customer asks any question and no card fits, choose card "answer" and write its agree/points/ask yourself. Answer ONLY from the plan sheet. If the plan sheet does not say, agree = "Good question.", points = say you will confirm and send it in writing, never guess a fact, price, policy or date.
-- For [question] cards: "agree" is the DIRECT ANSWER to what they asked (answer first, no filler), "points" add the strongest relevant promotion or plan fact, "ask" moves the conversation forward.
-- GOAL of the card: give the rep the talking points that move this customer toward yes in this call, fitted to what the customer JUST said and the conversation so far. Not random facts: every bullet must answer this customer's objection.
-  Persuasion toolkit (use one or two per line, never all):
-  1. Mirror: reuse the customer's own words or situation (whatever specific detail they just said).
-  2. Bridge: connect their concern to the benefit with a short link ("that's exactly why", "so here's the good part"). Never announce a fact out of nowhere.
-  3. Make it about their money in their terms: translate promo numbers ("that credit covers about two months of the plan").
-  4. Real loss framing: the promotion genuinely ends this month, so "you'd be leaving $150 on the table" is fair. Mention the deadline at most once per call; check the recent lines and skip it if the rep already said it.
-  5. Small yes first: end with an easy, specific next step, an either/or choice, or an assumptive step ("Want me to check your balance first, or switch the line first?", "I can do it now, takes five minutes, okay?").
-  When money is the worry, lead with the promotion's actual dollars ($150 credit, up to $300 phone payoff) before the monthly price, and tie them to what the customer actually said on this call (never assume details they have not mentioned).
-  6. Label the feeling before answering it ("sounds like the bill is what worries you").
-  Use the toolkit to CHOOSE the bullets (mirror their words, tie to their money, real deadline once, easy next step). Stay honest and specific.
-  Hard limits: never claim the customer's bill will drop or that they will save money (you don't know their bill); instead state the credit and price lock as facts and offer to check their numbers. Only true statements from the plan sheet, no invented customer numbers or "most customers" claims, no fake scarcity, no guilt, fear or shame, no pushing after a clear no. Persuade by being relevant and specific, never by pressure.
+- Choose "none" when the customer is only ANSWERING the rep's question (how they use their phone, their name, what they pay), making small talk, saying "okay", or agreeing.
+- ALWAYS HAVE AN ANSWER: if the customer asks any question and no type fits, choose "answer".
+
+Step 3: WRITE THE CARD FROM THEIR WORDS. The reader is a brand new salesperson in the middle of a call, so everything is plain words they can say out loud. Never write coaching notes like "compare total cost".
+- The card must be clearly about THIS customer and THIS sentence. If it could sit under any customer's objection of that type, it is wrong: rewrite it.
+- "agree": ONE sentence (max 14 words) that picks up a specific thing they said: a number, a name, a competitor, a family member, a reason, or their own phrase. Not a stock phrase like "I understand, price matters."
+- "points": exactly 2 statements (max 14 words each) that answer THEIR specific point using the plan sheet. When they give numbers (what they pay, a competitor's price, a balance owed, how many lines, a date), USE their numbers and do the simple arithmetic out loud: "$65 against your $90 is $25 less a month", "we cover up to $300 of the $400, so about $100 is left", "the $150 credit is more than two months of Pink Plus". Only do arithmetic on numbers the customer actually said and numbers in the plan sheet, say "about" when rounding, and ONLY when the result supports choosing us (our price is lower than theirs, the credit equals about two months of the plan, the payoff covers part of their balance). When THEIR number is lower than ours, never say the gap out loud: acknowledge the number neutrally, ask what it includes (taxes and fees, promo length, how many lines), and lead with what we offer: the five-year price lock, the $150 credit, the payoff, free streaming.
+- "ask": ONE question (max 12 words) that follows from what they said: the missing fact you need, or the next small step. Address the customer as "you".
+- For [question] cards: "agree" is the DIRECT ANSWER to what they asked (answer first, no filler), with the real number from the plan sheet.
+- Use the history. Do not repeat a point the rep already made earlier in the call, and mention the "ends this month" deadline at most once per call.
+- If the plan sheet does not cover what they asked, say you will confirm it and send it in writing. Never guess a fact, price, policy or date, and never describe what happens after the price lock ends, what taxes or fees apply, hotspot or roaming terms, or cancellation terms: those are NOT in the plan sheet.
+- Every point must be a sentence the rep can say TO the customer. Never put advice for the rep on the card (nothing like "so the value has to be clear" or "keep it short").
+- Always exactly 2 points.
+- Persuade by being specific and relevant, never by pressure. No fake scarcity, no guilt or fear, no pushing after a clear no. Do not promise the customer's total bill will drop (you do not know their bill); compare only the numbers they gave you.
+
+Style examples (the SHAPE to copy, never the words):
+  Customer: "I'm paying ninety a month for one line right now."  ->  agree "Ninety for one line, got it."  points ["Pink Plus is $65 for that line, about $25 less", "Price locked five years, plus a $150 credit this month"]  ask "Is that ninety with taxes included?"
+  Customer: "I still owe about four hundred on my phone."  ->  agree "Four hundred still owed, that's covered in part."  points ["We pay off up to $300 as bill credit", "That would leave about $100 for you"]  ask "Is that on one phone or two?"
+  Customer: "My wife handles all the phone stuff."  ->  agree "Makes sense that she handles it."  points ["I'm happy to walk you both through it", "The $150 credit ends this month, so timing matters"]  ask "Is she free tonight or tomorrow?"
+  Customer: "Verizon offered my sister three lines for 120 total."  ->  agree "Three lines for 120, that is worth comparing."  points ["Ours is locked for five years, plus a $150 credit to switch", "Unlimited data and free streaming come with it"]  ask "What does her 120 include with taxes and fees?"
 
 Plan sheet:
 ${PLAN_SHEET}
 
 Reply with ONLY JSON, no other text:
-{"speaker":"rep" or "customer","card":"<id or none>","agree":"<opening>","points":["<point>","<point>"],"ask":"<closing question>"}
-Format of the card. The reader is a BRAND NEW salesperson in the middle of a call, so everything must be plain words they can say out loud, never coaching notes:
-- "agree": ONE short sentence (max 10 words) the rep can say word for word to acknowledge the customer, e.g. "Good idea to compare."
-- "points": 1 or 2 short, plain statements (max 10 words each) the rep can say to the customer, using the promotion and plan facts and only details the customer actually said. Never write advice to the rep such as "compare total cost" or "ask about their needs".
-- "ask": ONE short question (max 10 words) addressed to the customer as "you", e.g. "What do you pay each month now?". Never refer to the customer as "their" or "they".
+{"speaker":"rep" or "customer","card":"<id or none>","agree":"<sentence>","points":["<point>","<point>"],"ask":"<question>"}
 For hard-no use agree "Understood, I'll remove you now.", points ["Confirm they're removed","Thank them and end the call"], ask "".
 If the card is "none" or the speaker is the rep, use empty strings and an empty array.`;
 }
 
 // The card list in the shape the prompt uses (the page sends the same thing).
 function cardsForClaude() {
-  return CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, example: { agree: c.agree, points: c.points, ask: c.ask } }));
+  return CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, }));
 }
 
 async function match(body) {
@@ -81,7 +84,8 @@ async function match(body) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 200,
-      thinking: { type: "disabled" },   // no reasoning tokens: keeps replies fast and the JSON short
+      // no reasoning tokens: keeps replies fast and the JSON short. Haiku and the larger models name this setting differently.
+      thinking: { type: /haiku/i.test(MODEL) ? "disabled" : "between_tools" },
       system: systemPrompt(cards),
       messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
     }),
