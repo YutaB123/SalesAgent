@@ -3,6 +3,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
 
 // optional .env file with ANTHROPIC_API_KEY=...
 try {
@@ -13,76 +14,36 @@ try {
 } catch {}
 
 const { CARDS } = require("./cards.js");
+const { systemPrompt } = require("./prompt.js");
+const { cardProblem } = require("./guard.js");
+const catalogFacts = require("./catalogFacts.js");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
-const MODEL = process.env.CLAUDE_MODEL || "claude-haiku-5-5";   // fast model for live calls
+const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
 const PORT = process.env.PORT || 3000;
-
-const PLAN_SHEET = `Fictional demo plan "Pink Plus": $65/mo per line, unlimited data, 5-year price lock, free streaming add-on.
-Plan is changed on one call, no store visit, no new SIM.
-PROMOTION (fictional): existing customers who switch to Pink Plus THIS MONTH get a $150 bill credit, and up to $300 of their remaining phone balance is paid off as bill credit. The promotion ends at the end of this month. The only condition is switching this month; everything is in writing.
-(All of this is fictional, for a hackathon demo.)`;
-
-function systemPrompt(cards) {
-  return `You are a live sales-coaching assistant. A new sales rep is on a phone call with an EXISTING customer, offering a new plan. The call is transcribed from one microphone, so lines have no speaker labels. You get the recent lines (already labeled by you earlier) and one new line.
-
-Step 1: decide who said the new line.
-- "rep": the salesperson. They greet, introduce T-Mobile, describe plans and prices, ask discovery questions, handle objections, propose next steps.
-- "customer": the person being called. They answer, ask about their bill, push back, object, ask questions about the offer, agree or decline.
-Use the conversation flow: a question from the rep is usually followed by the customer's answer, and vice versa. Short replies like "okay" or "yeah" usually come from whoever was just asked something.
-
-Step 2: only if the speaker is the customer, decide whether the line contains an objection, a rejection, OR a question that matches one of these cards (cards marked [question] are for when the customer ASKS something):
-${cards.map(c => `- ${c.id}: ${c.title} (${c.meaning})${c.kind === "question" ? " [question]" : ""} Default talking points: ${c.example ? JSON.stringify(c.example) : ""}`).join("\n")}
-
-Rules:
-- Never match a card for a rep line. Ignore greetings and small talk.
-- If the customer clearly asks not to be contacted again, always choose "hard-no".
-- Pick the single best card, or "none" only if the customer said nothing that needs a response (small talk, "okay", agreeing).
-- ALWAYS HAVE AN ANSWER: if the customer asks any question and no card fits, choose card "answer" and write its agree/points/ask yourself. Answer ONLY from the plan sheet. If the plan sheet does not say, agree = "Good question.", points = say you will confirm and send it in writing, never guess a fact, price, policy or date.
-- For [question] cards: "agree" is the DIRECT ANSWER to what they asked (answer first, no filler), "points" add the strongest relevant promotion or plan fact, "ask" moves the conversation forward.
-- GOAL of the card: give the rep the talking points that move this customer toward yes in this call, fitted to what the customer JUST said and the conversation so far. Not random facts: every bullet must answer this customer's objection.
-  Persuasion toolkit (use one or two per line, never all):
-  1. Mirror: reuse the customer's own words or situation (whatever specific detail they just said).
-  2. Bridge: connect their concern to the benefit with a short link ("that's exactly why", "so here's the good part"). Never announce a fact out of nowhere.
-  3. Make it about their money in their terms: translate promo numbers ("that credit covers about two months of the plan").
-  4. Real loss framing: the promotion genuinely ends this month, so "you'd be leaving $150 on the table" is fair. Mention the deadline at most once per call; check the recent lines and skip it if the rep already said it.
-  5. Small yes first: end with an easy, specific next step, an either/or choice, or an assumptive step ("Want me to check your balance first, or switch the line first?", "I can do it now, takes five minutes, okay?").
-  When money is the worry, lead with the promotion's actual dollars ($150 credit, up to $300 phone payoff) before the monthly price, and tie them to what the customer actually said on this call (never assume details they have not mentioned).
-  6. Label the feeling before answering it ("sounds like the bill is what worries you").
-  Use the toolkit to CHOOSE the bullets (mirror their words, tie to their money, real deadline once, easy next step). Stay honest and specific.
-  Hard limits: never claim the customer's bill will drop or that they will save money (you don't know their bill); instead state the credit and price lock as facts and offer to check their numbers. Only true statements from the plan sheet, no invented customer numbers or "most customers" claims, no fake scarcity, no guilt, fear or shame, no pushing after a clear no. Persuade by being relevant and specific, never by pressure.
-
-Plan sheet:
-${PLAN_SHEET}
-
-Reply with ONLY JSON, no other text:
-{"speaker":"rep" or "customer","card":"<id or none>","agree":"<opening>","points":["<point>","<point>"],"ask":"<closing question>"}
-Format of the card. The reader is a BRAND NEW salesperson in the middle of a call, so everything must be plain words they can say out loud, never coaching notes:
-- "agree": ONE short sentence (max 10 words) the rep can say word for word to acknowledge the customer, e.g. "Good idea to compare."
-- "points": 1 or 2 short, plain statements (max 10 words each) the rep can say to the customer, using the promotion and plan facts and only details the customer actually said. Never write advice to the rep such as "compare total cost" or "ask about their needs".
-- "ask": ONE short question (max 10 words) addressed to the customer as "you", e.g. "What do you pay each month now?". Never refer to the customer as "their" or "they".
-For hard-no use agree "Understood, I'll remove you now.", points ["Confirm they're removed","Thank them and end the call"], ask "".
-If the card is "none" or the speaker is the rep, use empty strings and an empty array.`;
-}
 
 // The card list in the shape the prompt uses (the page sends the same thing).
 function cardsForClaude() {
-  return CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, example: { agree: c.agree, points: c.points, ask: c.ask } }));
+  return CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, }));
 }
 
 async function match(body) {
-  const { text, history = [], speaker: known } = body;
+  const { text, history = [], speaker: known, partial = false } = body;
   const cards = body.cards || cardsForClaude();
+  const sheet = await catalogFacts.catalogSheet();   // the verified plan catalog, as short text
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
+  // rep lines never get a card, so they never need facts; for customer lines the plans database adds comparison facts when relevant
+  const facts = known === "rep" ? "" : await catalogFacts.planFacts(text, history).catch(() => "");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 200,
-      thinking: { type: "disabled" },   // no reasoning tokens: keeps replies fast and the JSON short
-      system: systemPrompt(cards),
-      messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
+      max_tokens: 300,
+      // no reasoning tokens: keeps replies fast and the JSON short. Haiku and the larger models name this setting differently.
+      thinking: { type: /haiku/i.test(MODEL) ? "disabled" : "between_tools" },
+      system: systemPrompt(cards, sheet),
+      messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${partial ? " (PARTIAL: this line may be cut off mid-sentence)" : ""}${facts ? `\n\n${facts}` : ""}${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
     }),
   });
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${await r.text()}`);
@@ -92,16 +53,91 @@ async function match(body) {
   try { json = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); }
   catch { console.error("Unparseable model reply:", JSON.stringify(raw), "stop:", data.stop_reason); throw new Error("bad model reply"); }
   const speaker = known || (json.speaker === "rep" ? "rep" : "customer");
-  const valid = speaker === "customer" && cards.some(c => c.id === json.card);
+  if (speaker === "rep") return { speaker, card: "none", agree: "", points: [], ask: "" };
   const clean = t => String(t || "").trim();
-  const points = valid && Array.isArray(json.points) ? json.points.map(clean).filter(Boolean).slice(0, 3) : [];
-  return { speaker, card: valid ? json.card : "none", agree: valid ? clean(json.agree) : "", points, ask: valid ? clean(json.ask) : "" };
+  let card = cards.some(c => c.id === json.card) ? json.card : "none";
+  // The rep must never be left without a card: a finished customer line always gets one. (Only a PARTIAL line may get none.)
+  if (card === "none" && !partial) return { speaker, card: "shared", agree: "", points: [], ask: "", fallback: true };
+  if (card === "none") return { speaker, card, agree: "", points: [], ask: "" };
+  const out = { speaker, card, agree: clean(json.agree), points: Array.isArray(json.points) ? json.points.map(clean).filter(Boolean).slice(0, 3) : [], ask: clean(json.ask) };
+  // Safety check: an invented number or a promise replaces the model's wording with the card's safe default wording (empty = use the default).
+  const problem = cardProblem(out, [convo, text, sheet, facts].join(" "));
+  if (problem) {
+    console.warn(`card rejected (${out.card}): ${problem} :: ${JSON.stringify([out.agree, ...out.points])}`);
+    return { speaker, card: out.card, agree: "", points: [], ask: "", guarded: problem };
+  }
+  return out;
+}
+
+const UI_DIR = path.join(__dirname, "sales-agent-ui", "dist");
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".json": "application/json", ".woff2": "font/woff2" };
+const isLocal = req => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
+
+// Serves the built React app. Unknown non-API paths fall back to index.html so client-side routing works.
+function serveUi(req, res) {
+  if (!fs.existsSync(path.join(UI_DIR, "index.html"))) return false;
+  const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+  let file = path.normalize(path.join(UI_DIR, pathname === "/" ? "index.html" : pathname));
+  if (!file.startsWith(UI_DIR)) { res.writeHead(403); res.end(); return true; }
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(UI_DIR, "index.html");
+  // The page itself must always be re-checked so a rebuilt app shows up on a normal reload; built assets have hashed names, so they can be cached.
+  const headers = { "content-type": TYPES[path.extname(file)] || "application/octet-stream" };
+  if (path.extname(file) === ".html") headers["cache-control"] = "no-cache";
+  res.writeHead(200, headers);
+  res.end(fs.readFileSync(file));
+  return true;
+}
+
+// Runs analysis_bridge.py (Eva's call_analysis.py, powered by Claude). Tries python3, then python.
+function runAnalysis(payload) {
+  const tryRun = cmd => new Promise((resolve, reject) => {
+    const child = spawn(cmd, [path.join(__dirname, "analysis_bridge.py")], { cwd: __dirname, env: process.env });
+    let out = "", err = "";
+    const timer = setTimeout(() => { child.kill(); reject(new Error("analysis timed out")); }, 90000);
+    child.stdout.on("data", d => out += d);
+    child.stderr.on("data", d => err += d);
+    child.on("error", e => { clearTimeout(timer); reject(Object.assign(e, { missing: e.code === "ENOENT" })); });
+    child.on("close", () => {
+      clearTimeout(timer);
+      try { const j = JSON.parse(out); j.error ? reject(new Error(j.error)) : resolve(j); }
+      catch { reject(new Error(err.trim().split("\n").pop() || "analysis failed")); }
+    });
+    child.stdin.end(JSON.stringify(payload));
+  });
+  return tryRun(process.env.PYTHON || "python3").catch(e => e.missing ? tryRun("python") : Promise.reject(e));
 }
 
 http.createServer(async (req, res) => {
-  if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+  if (await require("./knowledge/api.js").handle(req, res)) return;
+  if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
+  // The original single-page live coach, kept as a fallback at /classic.
+  if (req.method === "GET" && req.url === "/classic") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
+  }
+  // The card list as JSON, so the React app uses the same cards.js as the server.
+  if (req.method === "GET" && req.url === "/api/cards") {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ cards: CARDS }));
+  }
+  // Post-call report (Eva's call_analysis.py, run with Claude).
+  //   POST /api/post-call  { "lines": [ { "speaker": "rep"|"customer", "text": "..." } ] }
+  if (req.method === "POST" && req.url === "/api/post-call") {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    try {
+      if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
+      const { lines } = JSON.parse(raw);
+      if (!Array.isArray(lines) || !lines.length) throw new Error("send {\"lines\": [{speaker, text}, ...]}");
+      const report = await runAnalysis({ lines, product_context: await catalogFacts.catalogSheet() });
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ report }));
+    } catch (e) {
+      console.error("post-call:", e.message);
+      res.writeHead(502, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
   }
   if (req.method === "GET" && req.url === "/cards.js") {
     res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" });
@@ -136,10 +172,11 @@ http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/status") {
     res.writeHead(200, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY }));
+    return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY, plans: await catalogFacts.status() }));
   }
   // Local demo only: hands the Deepgram key to the page on localhost so the browser can stream audio directly.
   if (req.method === "GET" && req.url === "/api/dg-key") {
+    if (!isLocal(req)) { res.writeHead(403); return res.end(); }
     res.writeHead(DG_KEY ? 200 : 404, { "content-type": "application/json" });
     return res.end(JSON.stringify({ key: DG_KEY || null }));
   }
@@ -158,8 +195,14 @@ http.createServer(async (req, res) => {
     }
     return;
   }
+  if (req.method === "GET" && !req.url.startsWith("/api/") && serveUi(req, res)) return;
+  if (req.method === "GET" && req.url === "/") {   // no React build yet: fall back to the classic page
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
+  }
   res.writeHead(404); res.end();
 }).listen(PORT, () => {
-  console.log(`Rejection Coach: http://localhost:${PORT}`);
+  console.log(`Sales Agent: http://localhost:${PORT}   (classic live coach: /classic)`);
+  console.log(fs.existsSync(path.join(UI_DIR, "index.html")) ? "React UI: serving sales-agent-ui/dist" : "React UI not built yet: run  cd sales-agent-ui && pnpm install && pnpm build");
   console.log(KEY ? `Claude matching ON (${MODEL})` : "ANTHROPIC_API_KEY not set: falling back to keyword matching");
 });

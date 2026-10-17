@@ -1,4 +1,18 @@
 .env
+.env.*
+!.env.example
 *.log
 node_modules/
 .tmp*
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# React UI build
+sales-agent-ui/dist/
+
+# Local plan database and SQLite journal files
+database/*.sqlite*

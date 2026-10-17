@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SalesAgent · Communications</title><style>body{font:16px system-ui;background:#0f172a;color:#e2e8f0;max-width:760px;margin:60px auto;padding:24px}section{background:#1e293b;border-radius:16px;padding:24px;margin:20px 0}button,input{font:inherit;border-radius:8px;padding:12px;margin:5px}button{background:#7de3c2;border:0;cursor:pointer}input{width:250px}pre{white-space:pre-wrap;max-height:300px;overflow:auto}small{color:#94a3b8}</style><script defer src="/communications/sdk.js"></script><script defer src="/communications/browser.js"></script></head><body><h1>Communications test</h1><p>Seller uses Chrome audio. Customer answers a normal phone call.</p><section><button id="connect">Connect microphone</button><button id="sound">Enable call sound</button><button id="mute">Mute</button><button id="disconnect">Disconnect audio</button><p id="status">Not connected</p><input id="number" type="tel" placeholder="Customer +country code"><button id="dial" disabled>Call customer</button><button id="hangup" disabled>Hang up</button><p id="call">No call</p></section><section><h2>Audio handoff</h2><p id="tracks">No tracks yet</p><small>This module does not transcribe or write to a database. Your teammates consume its audio tracks and call events.</small><h2>Call events</h2><pre id="events"></pre></section><script>
+window.addEventListener('DOMContentLoaded',()=>{
+ const comms=new SalesAgentCommunications();window.comms=comms;let muted=false;
+ const $=id=>document.getElementById(id),run=fn=>async()=>{try{await fn()}catch(e){$('status').textContent=e.message}};
+ comms.addEventListener('status',e=>{$('status').textContent=e.detail.message});
+ comms.addEventListener('error',e=>{$('status').textContent=e.detail.message});
+ comms.addEventListener('playbackBlocked',()=>{$('status').textContent='Click Enable call sound to hear the customer'});
+ comms.addEventListener('audioTrack',e=>{$('tracks').textContent+='\n'+e.detail.role+': audio ready'});
+ comms.addEventListener('callEvent',e=>{$('events').textContent+=JSON.stringify(e.detail)+'\n'});
+ comms.addEventListener('state',e=>{const s=e.detail;const active=s.call&&!['ended','failed'].includes(s.call.state);$('call').textContent='Caller ID: '+s.callerId+' · '+(s.call?.state||'idle');$('dial').disabled=!s.ready||!s.sellerReady||active;$('hangup').disabled=!active});
+ $('connect').onclick=run(()=>comms.connect());$('sound').onclick=run(()=>comms.enableSound());
+ $('mute').onclick=run(async()=>{muted=!muted;await comms.mute(muted);$('mute').textContent=muted?'Unmute':'Mute'});
+ $('disconnect').onclick=run(()=>comms.disconnect());$('hangup').onclick=run(()=>comms.hangup());
+ $('dial').onclick=run(async()=>{if(confirm('Call '+$('number').value+'?'))await comms.dial($('number').value)});
+ window.addEventListener('pagehide',()=>{comms.room?.disconnect()});
+});
+</script></body></html>

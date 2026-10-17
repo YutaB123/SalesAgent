@@ -1,0 +1,723 @@
+{
+  "schemaVersion": 1,
+  "verifiedOn": "2026-10-17",
+  "maxAgeDays": 14,
+  "market": "US consumer postpaid mobile",
+  "plans": [
+    {
+      "id": "tmobile-essentials-2",
+      "carrier": "T-Mobile",
+      "name": "Essentials 2.0",
+      "aliases": [
+        "essentials 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 6500,
+        "2": 10000,
+        "3": 12000,
+        "4": 14000,
+        "5": 16000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "General consumer plan; discounts and device offers have separate eligibility requirements.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service"
+    },
+    {
+      "id": "tmobile-experience-more-2",
+      "carrier": "T-Mobile",
+      "name": "Experience More 2.0",
+      "aliases": [
+        "experience more 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 9000,
+        "2": 15000,
+        "3": 18500,
+        "4": 22000,
+        "5": 25500
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "60GB high-speed hotspot",
+        "Netflix Standard with ads included",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "15GB high-speed data in Canada and Mexico",
+        "5GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Eligible phone upgrade offers every three years; terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience More 2.0 — Broadband Facts and benefits",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "General consumer plan; discounts and device offers have separate eligibility requirements.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service"
+    },
+    {
+      "id": "tmobile-experience-beyond-2",
+      "carrier": "T-Mobile",
+      "name": "Experience Beyond 2.0",
+      "aliases": [
+        "experience beyond 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 10500,
+        "2": 18000,
+        "3": 23000,
+        "4": 28000,
+        "5": 33000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "250GB high-speed hotspot",
+        "T-Satellite included; compatible device and coverage restrictions",
+        "Netflix Standard with ads and Hulu included; terms apply",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "30GB high-speed data in Canada and Mexico",
+        "15GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Early phone upgrade eligibility; financing and offer terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience Beyond 2.0 — Broadband Facts and benefits",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "General consumer plan; discounts and device offers have separate eligibility requirements.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service"
+    },
+    {
+      "id": "att-value-2",
+      "carrier": "AT&T",
+      "name": "Value 2.0",
+      "aliases": [
+        "value 2.0"
+      ],
+      "baseMonthlyCentsByLines": {},
+      "advertisedOffer": {
+        "lines": 4,
+        "perLineCents": 3000,
+        "conditions": "Displayed four-line offer; eligible AutoPay, paperless billing and applicable wireless discounts; BYOD bill-credit terms may apply for up to 36 months. Taxes and fees extra. Not a verified existing-customer bill."
+      },
+      "features": [
+        "5GB high-speed data before possible congestion slowdowns",
+        "3GB hotspot",
+        "5G access with compatible device",
+        "US, Mexico and Canada talk/text/data; off-network roaming may be 2G",
+        "ActiveArmor security; compatible device/app required",
+        "Hotspot reduced to maximum 128Kbps after included allowance",
+        "SD video streaming"
+      ],
+      "sourceUrl": "https://www.att.com/plans/unlimited-data-plans/",
+      "sourceSection": "Value 2.0 displayed four-line pricing and offer terms",
+      "verifiedOn": "2026-10-17",
+      "fetchedOn": "2026-10-17",
+      "supportSourceUrl": "https://www.att.com/support/article-modal/wireless/KM1182926/"
+    },
+    {
+      "id": "att-extra-2",
+      "carrier": "AT&T",
+      "name": "Extra 2.0",
+      "aliases": [
+        "extra 2.0"
+      ],
+      "baseMonthlyCentsByLines": {},
+      "advertisedOffer": {
+        "lines": 4,
+        "perLineCents": 4000,
+        "conditions": "Displayed four-line offer after eligible AutoPay, paperless billing and applicable wireless discounts; confirm all offer/eligibility conditions. Taxes and fees extra. Not a verified existing-customer bill."
+      },
+      "features": [
+        "50GB hotspot",
+        "5G access with compatible device",
+        "US, Mexico and Canada talk/text/data; off-network roaming may be 2G",
+        "ActiveArmor security; compatible device/app required",
+        "Hotspot reduced to maximum 128Kbps after included allowance",
+        "100GB high-speed data; congestion slowdowns possible afterward",
+        "SD video streaming"
+      ],
+      "sourceUrl": "https://www.att.com/plans/unlimited-data-plans/",
+      "sourceSection": "Extra 2.0 displayed four-line pricing",
+      "verifiedOn": "2026-10-17",
+      "fetchedOn": "2026-10-17",
+      "supportSourceUrl": "https://www.att.com/support/article-modal/wireless/KM1182926/"
+    },
+    {
+      "id": "att-premium-2",
+      "carrier": "AT&T",
+      "name": "Premium 2.0",
+      "aliases": [
+        "premium 2.0"
+      ],
+      "baseMonthlyCentsByLines": {},
+      "advertisedOffer": {
+        "lines": 4,
+        "perLineCents": 5000,
+        "conditions": "Displayed four-line offer after eligible AutoPay, paperless billing and applicable wireless discounts; confirm eligibility. Taxes and fees extra. Not a verified existing-customer bill."
+      },
+      "features": [
+        "Unlimited high-speed data without usage-based slowdowns",
+        "100GB hotspot",
+        "5G access with compatible device",
+        "US, Mexico and Canada talk/text/data; off-network roaming may be 2G",
+        "ActiveArmor security; compatible device/app required",
+        "Hotspot reduced to maximum 128Kbps after included allowance",
+        "4K UHD video streaming",
+        "20 Latin American countries included; destination terms apply",
+        "50% discount on one eligible watch or tablet plan per phone line"
+      ],
+      "sourceUrl": "https://www.att.com/plans/unlimited-data-plans/",
+      "sourceSection": "Premium 2.0 displayed four-line pricing and benefits",
+      "verifiedOn": "2026-10-17",
+      "fetchedOn": "2026-10-17",
+      "supportSourceUrl": "https://www.att.com/support/article-modal/wireless/KM1182926/"
+    },
+    {
+      "id": "att-elite-2",
+      "carrier": "AT&T",
+      "name": "Elite 2.0",
+      "aliases": [
+        "elite 2.0"
+      ],
+      "baseMonthlyCentsByLines": {},
+      "advertisedOffer": {
+        "lines": 4,
+        "perLineCents": 7000,
+        "conditions": "Displayed four-line offer after eligible AutoPay, paperless billing and applicable wireless discounts; confirm eligibility. Taxes and fees extra. Not a verified existing-customer bill."
+      },
+      "features": [
+        "250GB hotspot",
+        "Tablet and watch connectivity included per phone line, subject to terms",
+        "5G access with compatible device",
+        "US, Mexico and Canada talk/text/data; off-network roaming may be 2G",
+        "ActiveArmor security; compatible device/app required",
+        "Hotspot reduced to maximum 128Kbps after included allowance",
+        "Unlimited high-speed data without usage-based slowdowns",
+        "AT&T Turbo included",
+        "4K UHD streaming",
+        "20GB international data in 210+ destinations; up to 512Kbps afterward",
+        "20 Latin American countries included; destination terms apply"
+      ],
+      "sourceUrl": "https://www.att.com/plans/unlimited-data-plans/",
+      "sourceSection": "Elite 2.0 displayed four-line pricing and benefits",
+      "verifiedOn": "2026-10-17",
+      "fetchedOn": "2026-10-17",
+      "supportSourceUrl": "https://www.att.com/support/article-modal/wireless/KM1182926/"
+    },
+    {
+      "id": "verizon-simplicity",
+      "carrier": "Verizon",
+      "name": "Simplicity",
+      "aliases": [
+        "simplicity"
+      ],
+      "baseMonthlyCentsByLines": {},
+      "advertisedOffer": {
+        "lines": 1,
+        "perLineCents": 3000,
+        "conditions": "After AutoPay and a $15/month switching discount; taxes and fees extra. Do not apply this new-customer offer to an existing subscriber's bill."
+      },
+      "features": [
+        "5G Ultra Wideband data",
+        "10GB hotspot",
+        "Mexico and Canada talk, text and data",
+        "Satellite texting on supported devices; outdoor satellite visibility and geographic limits apply",
+        "Call Filter and Verizon Family app",
+        "Verizon Dollars enrollment and redemption terms apply"
+      ],
+      "sourceUrl": "https://www.verizon.com/plans/unlimited/",
+      "sourceSection": "Simplicity Plan displayed offer and included benefits",
+      "verifiedOn": "2026-10-17",
+      "fetchedOn": "2026-10-17",
+      "connectionChargeCentsPerLine": 0
+    },
+    {
+      "id": "tmobile-essentials-2-first-responder",
+      "carrier": "T-Mobile",
+      "name": "Essentials First Responder 2.0",
+      "aliases": [
+        "essentials first responder 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 5000,
+        "2": 9000,
+        "3": 10500,
+        "4": 13000,
+        "5": 14500
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials First Responder 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "First Responder eligibility verification required; confirm account holder and qualifying status.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-more-2-first-responder",
+      "carrier": "T-Mobile",
+      "name": "Experience More w/ First Responder Savings 2.0",
+      "aliases": [
+        "experience more w/ first responder savings 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 7500,
+        "2": 11000,
+        "3": 13500,
+        "4": 16000,
+        "5": 18500
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "60GB high-speed hotspot",
+        "Netflix Standard with ads included",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "15GB high-speed data in Canada and Mexico",
+        "5GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Eligible phone upgrade offers every three years; terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience More w/ First Responder Savings 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "First Responder eligibility verification required; confirm account holder and qualifying status.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-beyond-2-first-responder",
+      "carrier": "T-Mobile",
+      "name": "Experience Beyond w/ First Responder Savings 2.0",
+      "aliases": [
+        "experience beyond w/ first responder savings 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 9000,
+        "2": 14000,
+        "3": 18000,
+        "4": 22000,
+        "5": 26000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "250GB high-speed hotspot",
+        "T-Satellite included; compatible device and coverage restrictions",
+        "Netflix Standard with ads and Hulu included; terms apply",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "30GB high-speed data in Canada and Mexico",
+        "15GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Early phone upgrade eligibility; financing and offer terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience Beyond w/ First Responder Savings 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "First Responder eligibility verification required; confirm account holder and qualifying status.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-essentials-2-military",
+      "carrier": "T-Mobile",
+      "name": "Essentials Military 2.0",
+      "aliases": [
+        "essentials military 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 5000,
+        "2": 9000,
+        "3": 10500,
+        "4": 13000,
+        "5": 14500
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials Military 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Military eligibility verification required; confirm account holder and qualifying status.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-more-2-military",
+      "carrier": "T-Mobile",
+      "name": "Experience More w/ Military Savings 2.0",
+      "aliases": [
+        "experience more w/ military savings 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 7500,
+        "2": 11000,
+        "3": 13500,
+        "4": 16000,
+        "5": 18500
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "60GB high-speed hotspot",
+        "Netflix Standard with ads included",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "15GB high-speed data in Canada and Mexico",
+        "5GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Eligible phone upgrade offers every three years; terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience More w/ Military Savings 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Military eligibility verification required; confirm account holder and qualifying status.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-beyond-2-military",
+      "carrier": "T-Mobile",
+      "name": "Experience Beyond w/ Military Savings 2.0",
+      "aliases": [
+        "experience beyond w/ military savings 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 9000,
+        "2": 14000,
+        "3": 18000,
+        "4": 22000,
+        "5": 26000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "250GB high-speed hotspot",
+        "T-Satellite included; compatible device and coverage restrictions",
+        "Netflix Standard with ads and Hulu included; terms apply",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "30GB high-speed data in Canada and Mexico",
+        "15GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Early phone upgrade eligibility; financing and offer terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience Beyond w/ Military Savings 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Military eligibility verification required; confirm account holder and qualifying status.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-essentials-2-55",
+      "carrier": "T-Mobile",
+      "name": "Essentials Choice 55+ 2.0",
+      "aliases": [
+        "essentials choice 55+ 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 5000,
+        "2": 7000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials Choice 55+ 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Account holder aged 55+; confirm eligibility.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-more-2-55",
+      "carrier": "T-Mobile",
+      "name": "Experience More w/ 55+ Savings 2.0",
+      "aliases": [
+        "experience more w/ 55+ savings 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 7500,
+        "2": 11000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "60GB high-speed hotspot",
+        "Netflix Standard with ads included",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "15GB high-speed data in Canada and Mexico",
+        "5GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Eligible phone upgrade offers every three years; terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience More w/ 55+ Savings 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Account holder aged 55+; confirm eligibility.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-beyond-2-55",
+      "carrier": "T-Mobile",
+      "name": "Experience Beyond w/ 55+ Savings 2.0",
+      "aliases": [
+        "experience beyond w/ 55+ savings 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 9000,
+        "2": 14000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "250GB high-speed hotspot",
+        "T-Satellite included; compatible device and coverage restrictions",
+        "Netflix Standard with ads and Hulu included; terms apply",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "30GB high-speed data in Canada and Mexico",
+        "15GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Early phone upgrade eligibility; financing and offer terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience Beyond w/ 55+ Savings 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Account holder aged 55+; confirm eligibility.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-essentials-2-student",
+      "carrier": "T-Mobile",
+      "name": "Essentials Saver Student 2.0",
+      "aliases": [
+        "essentials saver student 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 3500,
+        "2": 7000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials Saver Student 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Verified student eligibility required.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-more-2-student",
+      "carrier": "T-Mobile",
+      "name": "Experience More Student 2.0",
+      "aliases": [
+        "experience more student 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 7000,
+        "2": 12000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "60GB high-speed hotspot",
+        "Netflix Standard with ads included",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "15GB high-speed data in Canada and Mexico",
+        "5GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Eligible phone upgrade offers every three years; terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience More Student 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Verified student eligibility required.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-experience-beyond-2-student",
+      "carrier": "T-Mobile",
+      "name": "Experience Beyond Student 2.0",
+      "aliases": [
+        "experience beyond student 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 8500,
+        "2": 14000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited premium data",
+        "250GB high-speed hotspot",
+        "T-Satellite included; compatible device and coverage restrictions",
+        "Netflix Standard with ads and Hulu included; terms apply",
+        "Apple TV optional at $3/month",
+        "Up to 4K UHD streaming; compatible device and settings required",
+        "30GB high-speed data in Canada and Mexico",
+        "15GB high-speed data in 215+ destinations",
+        "Five-year eligible talk/text/data price guarantee; exclusions apply",
+        "Early phone upgrade eligibility; financing and offer terms apply"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Experience Beyond Student 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Verified student eligibility required.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    },
+    {
+      "id": "tmobile-essentials-2-saver",
+      "carrier": "T-Mobile",
+      "name": "Essentials Saver 2.0",
+      "aliases": [
+        "essentials saver 2.0"
+      ],
+      "baseMonthlyCentsByLines": {
+        "1": 5500,
+        "2": 9000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials Saver 2.0 — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Confirm plan availability and maximum supported line count.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": false
+    },
+    {
+      "id": "tmobile-essentials-2-four-line-offer",
+      "carrier": "T-Mobile",
+      "name": "Essentials 2.0 4 Line Offer",
+      "aliases": [
+        "essentials four line offer"
+      ],
+      "baseMonthlyCentsByLines": {
+        "4": 12000,
+        "5": 15000
+      },
+      "priceBasis": "Standard service price before AutoPay or other discounts; taxes and fees extra",
+      "providerFeeCentsPerLine": 549,
+      "connectionChargeCentsPerLine": 3500,
+      "features": [
+        "Unlimited talk, text and data",
+        "50GB premium data",
+        "Hotspot at up to 3G speeds"
+      ],
+      "sourceUrl": "https://www.t-mobile.com/cell-phone-plans",
+      "sourceSection": "Essentials 2.0 4 Line Offer — Broadband Facts",
+      "verifiedOn": "2026-10-17",
+      "eligibility": "Four-line offer; confirm current new-line/account requirements before quoting.",
+      "taxesAndFees": "Government taxes and location-dependent surcharges extra; regulatory/telco recovery fee $5.49 per voice line.",
+      "fetchedOn": "2026-10-17",
+      "scope": "Consumer postpaid phone service",
+      "requiresEligibility": true
+    }
+  ],
+  "coverage": {
+    "included": "Current consumer postpaid plans listed on the three linked official comparison pages, including T-Mobile specialist variants.",
+    "excluded": "Prepaid, business, home internet, historical discontinued plans, personalized retention offers and device-specific financing promotions.",
+    "limitations": "Dynamic or account-specific prices remain unverified; unknown values are not inferred. Source pages can change after fetch."
+  }
+}
