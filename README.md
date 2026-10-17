@@ -103,3 +103,7 @@ The cards live in `cards.js`. To change wording or add a card, edit that file an
 | `server.js` | Small local server: serves the page, calls Claude, and exposes `/api/analyze` |
 | `demo-script.html` / `.pdf` | A demo call to read aloud |
 | `.env.example` | Template for your API keys |
+
+## Photon communications integration
+
+The communications branch adds independent browser/phone audio and call lifecycle APIs. See [communications/README.md](communications/README.md) for setup, the website/STT/database handoff, and the standalone `/communications` test page. The original coaching and Deepgram implementation above remains unchanged.
