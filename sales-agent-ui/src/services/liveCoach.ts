@@ -17,8 +17,8 @@ export interface LiveCoachHooks {
 }
 
 /** What we know about the sentence being spoken right now. */
-interface Utterance { cardId: string | null; out: CoachResult | null; outWords: number; busy: boolean; lastLen: number; calls: number; }
-const freshUtterance = (): Utterance => ({ cardId: null, out: null, outWords: 0, busy: false, lastLen: 0, calls: 0 });
+interface Utterance { id: number; cardId: string | null; out: CoachResult | null; outWords: number; busy: boolean; lastLen: number; calls: number; }
+const freshUtterance = (): Utterance => ({ id: 0, cardId: null, out: null, outWords: 0, busy: false, lastLen: 0, calls: 0 });
 
 /** One audio stream's running state. */
 interface StreamState { segWords: DgWord[]; utt: Utterance; fixedRole?: CoachRole; }
@@ -53,6 +53,13 @@ export class LiveCoach {
   private spkMap: Record<number, CoachRole> = {};
   private swapped = false;
   private lastCommitted: CoachRole | null = null;
+  /**
+   * Customer sentences get a number, in the order they start. Claude answers take a second or two, so an answer
+   * for an OLD sentence can arrive after a newer sentence already has its card. Only the newest sentence may
+   * change the card on screen; older answers are kept for history but never shown.
+   */
+  private latest = 0;
+  private claim(utt: Utterance): void { if (!utt.id) utt.id = ++this.latest; }
 
   constructor(private cards: Card[], private hooks: LiveCoachHooks, private useClaude: boolean) {}
 
@@ -133,6 +140,7 @@ export class LiveCoach {
   /** The sentence is still being spoken: get a card up before they finish. */
   private onInterim(role: CoachRole, text: string, utt: Utterance): void {
     if (role === "rep") return;
+    this.claim(utt);
     // A keyword card goes up instantly (generic wording)...
     const keyword = matchKeywords(this.cards, text);
     if (keyword) {
@@ -148,6 +156,7 @@ export class LiveCoach {
     askCoach(text, undefined, this.history)   // Claude also checks it's the customer talking
       .then((out) => {
         utt.out = out; utt.outWords = n;
+        if (utt.id !== this.latest) return;   // a newer sentence has started: this answer is out of date
         const card = this.cards.find((c) => c.id === out.card);
         if (card && out.speaker === "customer") {
           utt.cardId = card.id;
@@ -176,10 +185,12 @@ export class LiveCoach {
   }
 
   /** A finished line: settle the card (keyword first for speed, then Claude's verdict). */
-  private async processFinal(role: CoachRole, text: string, utt?: Utterance): Promise<void> {
+  private async processFinal(role: CoachRole, text: string, given?: Utterance): Promise<void> {
     if (role === "rep") { this.history.push("Rep: " + text); return; }
+    const utt = given ?? freshUtterance();   // a typed line has no spoken sentence behind it
+    this.claim(utt);
     const local = matchKeywords(this.cards, text);
-    if (local && this.shown?.card.id !== local.id) this.show(local, contentOf(local), false);
+    if (local && this.shown?.card.id !== local.id && utt.id === this.latest) this.show(local, contentOf(local), false);
     if (local?.stop) { this.history.push("Customer: " + text); return; }   // a hard no never waits on the network
 
     let out: CoachResult | null = null;
@@ -191,6 +202,7 @@ export class LiveCoach {
     }
     this.history.push("Customer: " + text);
     if (!out) return;
+    if (utt.id !== this.latest) return;   // a newer sentence has started: do not replace its card with this older answer
     const card = this.cards.find((c) => c.id === out.card);
     if (!card) return;   // Claude saw no objection or question: keep whatever card is showing
     const content = toContent(out);

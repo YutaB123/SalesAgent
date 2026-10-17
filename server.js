@@ -124,7 +124,10 @@ function serveUi(req, res) {
   let file = path.normalize(path.join(UI_DIR, pathname === "/" ? "index.html" : pathname));
   if (!file.startsWith(UI_DIR)) { res.writeHead(403); res.end(); return true; }
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(UI_DIR, "index.html");
-  res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream" });
+  // The page itself must always be re-checked so a rebuilt app shows up on a normal reload; built assets have hashed names, so they can be cached.
+  const headers = { "content-type": TYPES[path.extname(file)] || "application/octet-stream" };
+  if (path.extname(file) === ".html") headers["cache-control"] = "no-cache";
+  res.writeHead(200, headers);
   res.end(fs.readFileSync(file));
   return true;
 }
