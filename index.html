@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rejection Coach (prototype)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column; }
+
+  header { flex: none; display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; border-bottom: 1px solid #1e293b; }
+  header h1 { margin: 0; font-size: 18px; }
+  .stats { font-size: 14px; color: #94a3b8; }
+
+  #split { flex: 1; display: flex; min-height: 0; }
+  #chat { flex: 1; min-width: 0; overflow-y: auto; padding: 24px 16px; border-right: 1px solid #1e293b; }
+  #cardpane { flex: 1; min-width: 0; padding: 24px 28px; background: #0b1220; display: flex; flex-direction: column; }
+  .pane-title { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #64748b; margin-bottom: 12px; }
+  #cardslot:empty::before { content: "A card appears here when the customer pushes back"; color: #475569; font-size: 20px; }
+  #cardpane .card { margin-top: 0; padding: 24px 28px 28px; }
+  #cardpane .say { font-size: 40px; line-height: 1.2; }
+  #cardpane .tag { font-size: 14px; }
+  .card.q { border-left-color: #16a34a; }
+  .card.q .tag { color: #15803d; }
+  .card.q .step .n { background: #16a34a; }
+  .card.q .s1 { color: #15803d; }
+  .step { display: flex; gap: 16px; align-items: flex-start; margin: 0 0 18px; }
+  .step .n { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #e20074; color: #fff; font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center; margin-top: 4px; }
+  .card.stop .step .n { background: #dc2626; }
+  .slbl { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+  .s1, .s3 { font-size: 32px; font-weight: 700; line-height: 1.2; }
+  .s1 { color: #0369a1; }
+  .card.stop .s1 { color: #b91c1c; }
+  #cardpane .pts { font-size: 30px; margin: 4px 0 0; padding-left: 24px; }
+  .agree { font-size: 28px; font-weight: 700; color: #0369a1; margin: 8px 0 14px; line-height: 1.2; }
+  .card.stop .agree { color: #b91c1c; }
+  .pts { margin: 0 0 16px; padding-left: 28px; font-size: 38px; font-weight: 700; line-height: 1.25; }
+  .pts li { margin: 6px 0; }
+  .pts li::marker { color: #e20074; }
+  .card.stop .pts li::marker { color: #dc2626; }
+  .askline { font-size: 30px; font-weight: 700; padding-top: 12px; border-top: 2px solid #e2e8f0; }
+  .askline span { display: inline-block; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: #fff; background: #e20074; border-radius: 6px; padding: 3px 9px; margin-right: 10px; vertical-align: middle; }
+  .card.stop .askline span { background: #dc2626; }
+  .col { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+  .thinking { align-self: flex-start; color: #94a3b8; font-size: 14px; font-style: italic; padding-left: 8px; }
+  .empty { text-align: center; color: #64748b; margin-top: 12vh; font-size: 18px; line-height: 1.6; }
+  .empty b { color: #e2e8f0; }
+
+  .bubble { align-self: flex-start; max-width: 85%; background: #1e293b; padding: 12px 16px; border-radius: 18px 18px 18px 4px; font-size: 18px; line-height: 1.4; }
+  .bubble { cursor: pointer; }
+  .bubble .who { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 2px; }
+  .bubble.rep { align-self: flex-end; background: #0c4a6e; border-radius: 18px 18px 4px 18px; }
+  .bubble.rep .who { color: #7dd3fc; text-align: right; }
+  .bubble.customer .who { color: #fbbf24; }
+  .bubble.live { opacity: .6; font-style: italic; }
+  .bubble mark { background: #fbbf24; color: #1c1917; padding: 0 3px; border-radius: 3px; }
+
+  .card { background: #f8fafc; color: #0f172a; border-radius: 16px; padding: 14px 22px 16px; box-shadow: 0 8px 24px rgba(0,0,0,.4); border-left: 8px solid #38bdf8; animation: pop .25s ease-out; }
+  .card.stop { background: #fef2f2; border-left-color: #dc2626; }
+  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+  .tag { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #0369a1; }
+  .card.stop .tag { color: #dc2626; }
+  .card h2 { margin: 2px 0 6px; font-size: 22px; }
+  .meaning { color: #475569; font-size: 15px; }
+  .lbl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64748b; margin: 16px 0 4px; }
+  .say { font-size: 34px; line-height: 1.2; font-weight: 700; margin-top: 4px; }
+  .more { font-size: 16px; color: #334155; }
+  .mind { margin-top: 14px; padding: 10px 14px; background: #e0f2fe; border-radius: 10px; font-style: italic; font-size: 14px; }
+  .card.stop .mind { background: #fee2e2; }
+  .fb { margin-top: 14px; display: flex; gap: 8px; align-items: center; font-size: 14px; color: #64748b; }
+  .fb button { padding: 6px 14px; font-size: 14px; border-radius: 8px; border: 2px solid #cbd5e1; background: white; cursor: pointer; }
+  .fb button:hover { background: #f1f5f9; }
+  .fb .done { color: #16a34a; font-weight: 600; }
+
+  footer { flex: none; border-top: 1px solid #1e293b; padding: 14px 16px; background: #0b1220; }
+  .bar { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
+  #mic { flex: none; width: 64px; height: 64px; border-radius: 50%; border: 0; font-size: 28px; cursor: pointer; background: #22c55e; color: #052e16; }
+  #mic.on { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 10px rgba(239,68,68,.2); } }
+  #status { flex: 1; font-size: 14px; color: #94a3b8; }
+  #status b { color: #e2e8f0; display: block; font-size: 16px; }
+  #type { display: flex; gap: 6px; }
+  #type input { width: 190px; padding: 10px; font-size: 14px; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #e2e8f0; }
+  #type button { padding: 10px 14px; border-radius: 8px; border: 0; background: #334155; color: #e2e8f0; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rejection Coach <small style="color:#64748b">hackathon demo, fictional plans</small></h1>
+  <div class="stats"><span id="mode"></span> <span id="stats"></span></div>
+</header>
+<div style="background:#1e293b;padding:8px 24px;font-size:13px;color:#94a3b8">Demo plan sheet (fictional): <b style="color:#e2e8f0">Pink Plus</b> $65/mo per line &middot; unlimited data &middot; 5-year price lock &middot; free streaming add-on &middot; changed on one call, no store visit &middot; <b style="color:#f472b6">PROMO (ends this month): $150 bill credit for switching + up to $300 of your phone balance paid off as credit</b></div>
+
+<div id="split">
+<div id="chat"><div class="col" id="col">
+  <div class="empty" id="empty">
+    <b>Put your call on speaker, then tap the green mic.</b><br>
+    What you hear shows up here.<br>
+    When a customer pushes back, a coaching card appears automatically.
+  </div>
+</div></div>
+<aside id="cardpane">
+  <div class="pane-title">Say this</div>
+  <div id="cardslot"></div>
+</aside>
+</div>
+
+<footer><div class="bar">
+  <button id="mic" title="Start / stop listening">🎤</button>
+  <div id="status"><b>Not listening</b>Tap the mic to start</div>
+  <button id="swap" type="button" title="Swap who is Rep and who is Customer" style="padding:10px 12px;border-radius:8px;border:0;background:#334155;color:#e2e8f0;cursor:pointer">Swap<br>Rep/Cust</button>
+  <form id="type"><input id="line" placeholder="Or type a line to test…" autocomplete="off"><button>Send</button></form>
+</div></footer>
+
+<script>
+const CARDS = [
+  { id: "not-interested", title: "Not interested", keys: ["not interested", "no thanks", "no thank you", "not for me", "i'll pass", "i am good", "i'm good thanks", "no i'm good"],
+    meaning: "They have no reason to care yet. It's rarely about you.",
+    agree: "Fair enough, I haven't said why I called.", points: ["You get a $150 credit for switching","It ends this month"], ask: "Can I have 20 seconds to explain?" },
+  { id: "is-sales", title: "Is this a sales call?", keys: ["is this a sales call", "is this a cold call", "are you selling", "are you trying to sell", "is this a sales pitch", "what are you selling", "is this a pitch"],
+    meaning: "They're guarding against a pitch. Honesty disarms it.",
+    agree: "Yes, it is, and I'll be quick.", points: ["It's a $150 credit on your bill","Only if it fits you"], ask: "Want the 20-second version?" },
+  { id: "busy", title: "Bad time / call me later", keys: ["bad time", "busy right now", "i'm busy", "im busy", "in a meeting", "not a good time", "call me back", "call back", "call me later", "i'm driving", "call me next month", "call next month", "call me next week", "call next week"],
+    meaning: "Probably true. Get a specific time, not a vague later.",
+    agree: "No problem, this is quick.", points: ["It takes two minutes","The $150 credit ends this month"], ask: "Is tomorrow at 10 or 2 better?" },
+  { id: "send-email", title: "Send me an email", keys: ["send me an email", "email me", "text me", "send me some", "send me info", "send me the details", "send something"],
+    meaning: "Often a polite brush-off, sometimes a real request.",
+    agree: "Happy to send it.", points: ["It has the same offer, in writing","The $150 credit ends this month"], ask: "Can we take two minutes now so I send the right thing?" },
+  { id: "online-store", title: "I'll do it online / in store", keys: ["do it online", "i'll do it online", "do it myself", "go to the store", "go into the store", "visit the store", "do it in the app", "handle it online", "go online"],
+    meaning: "They want to handle it on their own time. Make it easier here.",
+    agree: "Sure, you can do that.", points: ["I can finish it right now","No store visit, no new SIM"], ask: "Want me to finish it for you now?" },
+  { id: "too-expensive", title: "Too expensive", keys: ["too expensive", "too much money", "can't afford", "cost more", "bill will go up", "bill go up", "more per month", "paying more", "higher bill", "that's a lot", "costs too much"],
+    meaning: "The value isn't clear yet, or the budget is real.",
+    agree: "I understand, price matters.", points: ["You get a $150 credit on your bill","Your price is locked for five years"], ask: "What do you pay each month now?" },
+  { id: "tight", title: "Money's tight", keys: ["money is tight", "money's tight", "tight on money", "tight budget", "on a budget", "can't swing", "stretched thin", "struggling financially", "need to save money", "watching my spending"],
+    meaning: "A real budget limit. Show relief, not features.",
+    agree: "I get it, money matters.", points: ["Your price is locked for five years","The $150 credit helps right away"], ask: "Can I show you the total?" },
+  { id: "competitor", title: "A competitor is cheaper", keys: ["other carrier", "verizon", "at&t", "at and t", "competitor", "cheaper elsewhere", "cheaper somewhere", "another provider", "better deal elsewhere", "someone else is cheaper", "pay less with", "my friend pays less"],
+    meaning: "They're comparing headline prices. Move it to total value.",
+    agree: "Good idea to compare.", points: ["Ours is $65 per line, locked five years","You also get a $150 credit and free streaming"], ask: "What's your total each month with them?" },
+  { id: "on-a-deal", title: "Still paying off my phone", keys: ["paying off my phone", "pay off my phone", "still paying", "on a deal", "lose my discount", "lose my deal", "device payment", "phone payment", "installment", "still owe", "balance on my phone", "owe on my phone", "remaining balance"],
+    meaning: "They fear losing what they have or being stuck owing.",
+    agree: "Good question.", points: ["We can pay off up to $300 of your phone","It comes as a credit on your bill"], ask: "How much do you still owe?" },
+  { id: "new-phone", title: "I just got a new phone", keys: ["just got a new phone", "just bought a phone", "just upgraded", "new phone", "recently upgraded", "just got this phone"],
+    meaning: "They think a plan change means a new device. It doesn't.",
+    agree: "Congrats on the new phone.", points: ["You keep your phone, only your plan changes","You still get the $150 credit"], ask: "Which phone did you get?" },
+  { id: "happy-current", title: "Happy with my plan", keys: ["happy with my plan", "happy with my current", "happy with what i have", "happy where i am", "fine with my plan", "my plan is fine", "my plan works", "don't need a new plan", "don't need to change", "don't want to change", "satisfied with"],
+    meaning: "Change feels like risk, with no clear gain yet.",
+    agree: "Glad it's working for you.", points: ["Your price is locked for five years","You get free streaming and a $150 credit"], ask: "Is there anything you'd change?" },
+  { id: "no-need", title: "Don't need more data", keys: ["don't need more data", "don't need that much data", "don't use that much", "don't need all that", "don't need the extra", "don't need unlimited", "don't need features", "don't use my phone that much"],
+    meaning: "They don't feel a need. Shift from data to price and perks.",
+    agree: "That makes sense.", points: ["This is about saving money, not more data","Price locked five years, plus a $150 credit"], ask: "What do you mostly use your phone for?" },
+  { id: "loyal", title: "I've been with you for years", keys: ["been with you", "been with t-mobile", "been a customer", "customer for years", "with you guys", "with you for", "loyal customer", "years with"],
+    meaning: "They feel loyal. Honor it and keep it simple.",
+    agree: "Thank you for staying with us.", points: ["You get a $150 credit for switching","Your price is locked for five years"], ask: "How long have you been with us?" },
+  { id: "coverage", title: "My coverage has issues", keys: ["coverage", "dropped calls", "drops calls", "no signal", "bad signal", "poor signal", "service is bad", "spotty", "dead zone", "calls drop"],
+    meaning: "A real problem. Listen before you sell. No promises.",
+    agree: "I'm sorry, that's frustrating.", points: ["Let's check your address first","Then we can see if the $150 offer fits"], ask: "Where do your calls drop?" },
+  { id: "catch", title: "What's the catch?", keys: ["what's the catch", "whats the catch", "what is the catch", "the catch", "there's a catch", "too good to be true", "fine print", "hidden fee", "hidden fees", "what's the trick"],
+    meaning: "They don't trust the offer yet. Say the condition first.",
+    agree: "Fair question, here's the one condition.", points: ["You need to switch this month","Then you get the $150 credit, in writing"], ask: "Want to see the terms first?" },
+  { id: "verify", title: "How do I know you're T-Mobile?", keys: ["how do i know", "are you really", "prove you're", "prove you are", "is this legit", "is this a scam", "sounds like a scam", "who is this", "can't verify", "not sure this is real"],
+    meaning: "A smart security instinct. Let them verify.",
+    agree: "Smart to check.", points: ["Hang up and call T-Mobile directly, or check your app","Then ask about the $150 credit offer"], ask: "Want to call back and confirm?" },
+  { id: "bad-exp", title: "Bad experience last time", keys: ["last time", "bad experience", "terrible experience", "you guys messed", "messed up my", "lied to me", "wasn't honored", "didn't honor", "never fixed", "still not fixed", "had a problem with"],
+    meaning: "They were let down. Listen first, then make it right in writing.",
+    agree: "I'm sorry, that's not okay.", points: ["This time everything is in writing","That includes the $150 credit"], ask: "Can you tell me what happened?" },
+  { id: "think", title: "I need to think about it", keys: ["think about it", "think it over", "get back to you", "let me consider", "sleep on it", "not sure yet", "need some time"],
+    meaning: "There's one unspoken concern. Find it.",
+    agree: "Of course, take your time.", points: ["The $150 credit ends this month","All the terms are in writing"], ask: "What's the one thing holding you back?" },
+  { id: "family", title: "I need to ask my spouse", keys: ["my wife", "my husband", "my spouse", "my partner", "my family", "my parents", "talk to my", "ask my", "check with my", "not my decision"],
+    meaning: "It's a shared decision. Include them.",
+    agree: "That makes sense.", points: ["I can talk to you both and send a summary","The $150 credit ends this month"], ask: "Can I call you both tonight?" },
+  { id: "hassle", title: "Too much hassle", keys: ["hassle", "too much work", "too much trouble", "don't have time to switch", "don't want to deal with", "complicated", "takes too long"],
+    meaning: "They picture effort, not the benefit. Shrink the effort.",
+    agree: "I understand, I'll make it easy.", points: ["One call, no store visit, no new SIM","About five minutes, and the $150 credit is included"], ask: "Want to do it now?" },
+  { id: "price", kind: "question", title: "Price", keys: ["how much is","how much does","how much will","what does it cost","what's the price","what is the price","what's the cost","what is the cost","pricing","how much per","what would it cost","price of"],
+    meaning: "They want the price. Give a straight number first.",
+    agree: "It's $65 per line, per month.", points: ["Your price is locked for five years","Plus a $150 credit for switching this month"], ask: "How many lines do you have?" },
+  { id: "discount", kind: "question", title: "Discount", keys: ["discount","any deals","any promotion","any promotions","can you do better","a better price","cheaper deal","any offers","promo code","special offer","anything cheaper","lower the price","waive"],
+    meaning: "They're asking for a deal. Lead with this month's offer.",
+    agree: "Yes, we have an offer this month.", points: ["A $150 credit for switching","Up to $300 of your phone balance paid off"], ask: "Want me to apply it today?" },
+  { id: "included", kind: "question", title: "What's included", keys: ["what's included","what is included","what do i get","what comes with","what does it include","what's in it","what are the features","what are the perks","what's the benefit","what are the benefits"],
+    meaning: "They want to know what they get.",
+    agree: "Unlimited data and a free streaming add-on.", points: ["Your price is locked for five years","Plus a $150 credit for switching"], ask: "What do you use your phone for most?" },
+  { id: "data", kind: "question", title: "Data / hotspot", keys: ["unlimited data","data cap","throttle","hotspot","how much data","data limit","slow down","deprioritized"],
+    meaning: "A data question. Answer what you know, confirm the rest.",
+    agree: "Yes, the plan has unlimited data.", points: ["I'll confirm any hotspot details in writing","Your price is locked for five years"], ask: "Do you use a hotspot?" },
+  { id: "contract", kind: "question", title: "Contract / cancelling", keys: ["is there a contract","contract","cancel","cancellation","early termination","how long is the commitment","commitment","term of"],
+    meaning: "They worry about being stuck. Be straight and put it in writing.",
+    agree: "Your price is locked for five years.", points: ["I'll send the cancellation terms in writing","Everything is in writing before you decide"], ask: "Want me to send them first?" },
+  { id: "promo-end", kind: "question", title: "When does the offer end", keys: ["when does it end","when does the offer end","when does it expire","expire","how long is the offer","how long does the offer","deadline","end of the month","offer valid"],
+    meaning: "They want the deadline. It's real, so say it plainly.",
+    agree: "The offer ends at the end of this month.", points: ["You get a $150 credit for switching","Up to $300 of your phone paid off"], ask: "Want to lock it in today?" },
+  { id: "phone-balance", kind: "question", title: "What about my phone", keys: ["what happens to my phone","what about my phone","do i still owe","will i still owe","what happens to my balance","what about my balance","if i switch my phone","pay off the phone","payoff"],
+    meaning: "They want to know what happens to the phone they owe on.",
+    agree: "You keep your phone.", points: ["We can pay off up to $300 of the balance","It comes as a credit on your bill"], ask: "How much do you still owe?" },
+  { id: "how-switch", kind: "question", title: "How does switching work", keys: ["how does it work","how do i switch","how do i sign up","what's the process","what is the process","how long does it take","how do we do this","what are the steps","what do i need to do","how would i switch"],
+    meaning: "They want the steps. Keep it simple.",
+    agree: "It's one call, about five minutes.", points: ["No store visit, no new SIM","You get the $150 credit for switching"], ask: "Want to start now?" },
+  { id: "credit-timing", kind: "question", title: "How does the credit work", keys: ["when do i get the credit","when would i get the credit","how do i get the credit","when does the credit","how does the credit work","where does the credit go","when is the credit applied","credit show up"],
+    meaning: "They want to know how the credit reaches them.",
+    agree: "It's a $150 credit on your bill.", points: ["I'll confirm exactly when it shows up","Everything is in writing"], ask: "Want that in writing?" },
+  { id: "coverage-q", kind: "question", title: "Coverage at my address", keys: ["coverage in my area","signal in my area","do you cover","is there coverage","coverage at my","coverage where i live","service where i live","reception in"],
+    meaning: "A coverage question. Don't promise, check their address.",
+    agree: "Let's check your address together.", points: ["Tell me where you use your phone most","Then we can see if the $150 offer fits"], ask: "What's your ZIP code?" },
+  { id: "keep-number", kind: "question", title: "Keep my number / phone", keys: ["keep my number","keep my phone number","change my number","new number","keep my phone","keep my current phone","can i keep"],
+    meaning: "They fear losing their number or phone.",
+    agree: "Yes, you keep your number and your phone.", points: ["It's only a plan change","You get a $150 credit for switching"], ask: "Want to get started?" },
+  { id: "why-switch", kind: "question", title: "Why should I switch", keys: ["why should i switch","why switch","what's the difference","what is the difference","how is it different","what's better","why change","what's in it for me","why would i"],
+    meaning: "They want a reason. Give the one clear difference.",
+    agree: "Good question, here's the difference.", points: ["Your price is locked for five years","Free streaming, plus a $150 credit to switch"], ask: "What are you paying today?" },
+  { id: "fees", kind: "question", title: "Taxes and fees", keys: ["taxes and fees","activation fee","any fees","hidden costs","what about taxes","plus taxes","surcharge"],
+    meaning: "They want the full cost. Be honest about what you'll confirm.",
+    agree: "The plan price is $65 per line.", points: ["I'll confirm taxes and fees in writing","Your price is locked for five years"], ask: "Want the full total in writing?" },
+  { id: "add-line", kind: "question", title: "Add a line", keys: ["add a line","add another line","add a phone","more lines","extra line","add my wife","add my kid","add my husband","new line"],
+    meaning: "They want another line.",
+    agree: "Each line is $65 a month.", points: ["Your price is locked for five years","You get the $150 credit for switching"], ask: "How many lines do you want?" },
+  { id: "answer", kind: "question", title: "Their question", keys: [],
+    meaning: "A question none of the other cards cover. Answer only what you know.",
+    agree: "Good question.", points: ["Let me confirm so I give you the right answer","I'll send it to you in writing"], ask: "Can I follow up today?" },
+  { id: "hard-no", title: "Don't call me again", stop: true, keys: ["don't call me", "do not call", "stop calling", "remove me", "take me off", "unsubscribe", "harass", "quit calling", "never call"],
+    meaning: "A clear, final no. Pushing here is disrespectful and can be illegal.",
+    agree: "Understood, I'll remove you now.", points: ["Confirm they're removed","Thank them and end the call"], ask: "" },
+];
+const BULLETS = Object.fromEntries(CARDS.map(c => [c.id, { agree: c.agree, points: c.points, ask: c.ask }]));const $ = id => document.getElementById(id);
+const log = JSON.parse(localStorage.getItem("rc-log") || "[]");
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+// ---- matching ----
+function match(text) {
+  const q = text.toLowerCase().replace(/[’]/g, "'");
+  let best = null, bestScore = 0;
+  for (const c of CARDS) {
+    const hits = c.keys.filter(k => q.includes(k)).reduce((n, k) => n + k.length, 0);   // longer phrases win
+    const score = hits * (c.stop ? 10 : 1);   // hard no always wins
+    if (score > bestScore) { best = c; bestScore = score; }
+  }
+  return best;
+}
+
+function highlight(text, card) {
+  let html = esc(text);
+  if (card) card.keys.forEach(k => {
+    const re = new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+    html = html.replace(re, m => `<mark>${m}</mark>`);
+  });
+  return html;
+}
+
+// ---- chat ----
+function scroll() { const c = $("chat"); c.scrollTop = c.scrollHeight; }
+
+const history = [];
+let claudeOn = false;
+let dgOn = false;
+fetch("/api/status").then(r => r.json()).then(s => { claudeOn = s.claude; dgOn = s.deepgram; showMode(); }).catch(showMode);
+function showMode() {
+  $("mode").textContent = `Voice: ${dgOn ? "Deepgram" : "browser"} · Matching: ${claudeOn ? "Claude" : "keywords"}`;
+  $("mode").style.color = claudeOn && dgOn ? "#4ade80" : "#fbbf24";
+}
+
+function setSpeaker(b, who) {
+  b.classList.remove("unk", "rep", "customer");
+  b.classList.add(who);
+  b.dataset.who = who;
+  b.querySelector(".who").textContent = who === "rep" ? "Rep" : who === "customer" ? "Customer" : "…";
+}
+
+// live = { el, card } from the in-progress bubble (card may already be showing from interim text)
+// known = "rep" | "customer" when the voice already told us who spoke (Deepgram); otherwise Claude guesses.
+async function addBubble(text, live, known) {
+  $("empty")?.remove();
+  const local = known === "rep" ? null : match(text);
+  const b = live?.el || document.createElement("div");
+  b.className = "bubble unk";
+  b.innerHTML = `<div class="who">…</div><div class="txt">${highlight(text, local)}</div>`;
+  if (known) setSpeaker(b, known);
+  b.title = "Click to switch Rep / Customer";
+  b.onclick = () => {
+    const next = b.dataset.who === "rep" ? "customer" : "rep";
+    setSpeaker(b, next);
+    if (next === "customer") { const c = match(text); if (c) addCard(c); scroll(); }
+  };
+  if (!live) $("col").appendChild(b);
+
+  // Show the keyword card right away (reuse the one from interim text if it's the same), refine with Claude after.
+  let cardEl = null;
+  const pre = live?.card;
+  if (local && pre && pre.id === local.id) cardEl = pre.el;
+  else if (local) cardEl = addCard(local);   // a card stays up until a newer objection replaces it
+  scroll();
+
+  // Rep lines need no card and no Claude call.
+  if (known === "rep") { history.push("Rep: " + text); return; }
+
+  // Hard no never waits on the network.
+  if (local && local.stop) { setSpeaker(b, "customer"); history.push("Customer: " + text); return; }
+
+  let card = local, data = null, who = known || (local ? "customer" : "unk");
+  if (claudeOn) {
+    try {
+      // Claude may already have answered while the customer was still talking: reuse that if the line barely grew.
+      const reuse = live?.out && wordCount(text) <= live.outWords + 2;
+      const out = reuse ? live.out : await askClaude(text, known);
+      who = out.speaker;
+      card = CARDS.find(c => c.id === out.card) || null;
+      data = toData(out);
+    } catch (e) {
+      card = local;   // fall back to keywords if Claude fails
+    }
+  }
+  setSpeaker(b, who);
+  b.querySelector(".txt").innerHTML = highlight(text, who === "rep" ? null : card);
+  history.push((who === "rep" ? "Rep: " : who === "customer" ? "Customer: " : "Unknown: ") + text);
+
+  // Reconcile the card already on screen (keyword or early Claude) with Claude's final verdict.
+  const shownId = cardEl ? local.id : pre?.id;
+  const shownEl = cardEl || pre?.el;
+  if (who === "rep") shownEl?.remove();
+  else if (!card) { /* keep whatever card is showing */ }
+  else if (card.id !== shownId) addCard(card, data);
+  else if (data && shownEl) shownEl.querySelector(".body").innerHTML = bulletsHTML(data, card.stop, card.kind === "question");
+  scroll();
+}
+
+const wordCount = t => t.trim().split(/\s+/).length;
+const toData = out => Array.isArray(out.points) && out.points.length && out.agree
+  ? { agree: out.agree, points: out.points.slice(0, 2), ask: out.ask || "" } : null;
+
+async function askClaude(text, speaker) {
+  const r = await fetch("/api/match", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text, speaker, history: history.slice(-10), cards: CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, example: BULLETS[c.id] })) }),
+  });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+// Ask Claude while the customer is still talking, so the card is up by the time they stop.
+// Only when no keyword card is showing yet; re-asks as the sentence grows.
+async function interimClaude(lb, text, role) {
+  if (!claudeOn || role === "rep" || lb.busy || lb.card || lb.calls >= 3) return;
+  const n = wordCount(text);
+  if (n < 4 || n < lb.lastLen + 3) return;
+  lb.busy = true; lb.lastLen = n; lb.calls++;
+  try {
+    const out = await askClaude(text);          // Claude also confirms it's the customer talking
+    lb.out = out; lb.outWords = n;
+    const card = CARDS.find(c => c.id === out.card);
+    if (card && out.speaker === "customer" && liveBubble === lb && !lb.card) lb.card = { id: card.id, el: addCard(card, toData(out)) };
+  } catch {} finally { lb.busy = false; }
+}
+
+// Talking points, not sentences: the rep says the opener in their own words and glances at the bullets.
+
+const bulletsHTML = (d, stop, q) => `
+  <div class="step"><span class="n">1</span><div><div class="slbl">${stop ? "Say" : q ? "First, answer" : "First, say"}</div><div class="s1">“${esc(d.agree)}”</div></div></div>
+  <div class="step"><span class="n">2</span><div><div class="slbl">${stop ? "Then" : q ? "Then add" : "Then explain"}</div><ul class="pts">${d.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div></div>
+  ${d.ask ? `<div class="step"><span class="n">3</span><div><div class="slbl">Then ask</div><div class="s3">${esc(d.ask)}</div></div></div>` : ""}`;
+
+function addCard(c, data) {
+  const el = document.createElement("div");
+  el.className = "card" + (c.stop ? " stop" : "") + (c.kind === "question" ? " q" : "");
+  el.innerHTML = `<div class="tag">${c.stop ? "STOP: " : ""}${c.kind === "question" ? "CUSTOMER ASKED: " : ""}${c.title}</div><div class="body">${bulletsHTML(data || BULLETS[c.id], c.stop, c.kind === "question")}</div>`;
+  $("cardslot").replaceChildren(el);   // right side shows only the newest card
+  return el;
+}
+function stats() {
+  const wins = log.filter(l => l.worked).length;
+  $("stats").textContent = log.length ? `${wins} of ${log.length} cards worked` : "";
+}
+stats();
+
+// ---- typed test line ----
+$("type").onsubmit = e => {
+  e.preventDefault();
+  const t = $("line").value.trim();
+  if (!t) return;
+  $("line").value = "";
+  addBubble(t);
+};
+
+// ---- live listening (Chrome / Edge) ----
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listening = false, liveBubble = null;
+
+function setStatus(title, sub) { $("status").innerHTML = `<b>${title}</b>${sub}`; }
+
+$("mic").onclick = () => {
+  if (listening) return stop();
+  if (dgOn) return startDG();
+  if (!SR) { setStatus("Not supported", "Use Chrome or Edge for listening."); return; }
+  start();
+};
+
+// ---- Deepgram streaming: fast transcripts, speakers separated by voice ----
+let lastCommitted = null;
+let dg = null, audioCtx = null, pcmNode = null, micStream = null, segWords = [], swapped = false;
+const spkMap = {};   // Deepgram speaker id -> "rep" | "customer"; first voice heard is the rep
+
+function roleFor(id) {
+  if (!(id in spkMap)) spkMap[id] = Object.keys(spkMap).length === 0 ? "rep" : "customer";
+  const r = spkMap[id];
+  return swapped ? (r === "rep" ? "customer" : "rep") : r;
+}
+
+$("swap").onclick = () => {
+  swapped = !swapped;
+  document.querySelectorAll(".bubble[data-who]").forEach(b => setSpeaker(b, b.dataset.who === "rep" ? "customer" : "rep"));
+};
+
+function showLive(text, role) {
+  if (!liveBubble) {
+    $("empty")?.remove();
+    liveBubble = { el: document.createElement("div"), card: null, out: null, outWords: 0, busy: false, lastLen: 0, calls: 0 };
+    $("col").appendChild(liveBubble.el);
+  }
+  liveBubble.el.className = "bubble live " + (role || "");
+  liveBubble.el.innerHTML = `<div class="who">${role === "rep" ? "Rep" : role === "customer" ? "Customer" : "…"}</div><div class="txt">${esc(text)}</div>`;
+  // card pops up the moment the customer says the objection (never for the rep's own words)
+  const c = role === "rep" ? null : match(text);
+  if (c && (!liveBubble.card || liveBubble.card.id !== c.id)) liveBubble.card = { id: c.id, el: addCard(c) };
+  else if (!c) interimClaude(liveBubble, text, role);
+  scroll();
+}
+
+function flushDG() {
+  const words = segWords; segWords = [];
+  if (!words.length) return;
+  // split into runs by speaker, so a rep line and a customer reply become separate bubbles
+  const runs = [];
+  for (const w of words) {
+    const last = runs[runs.length - 1], spk = w.speaker ?? 0, t = w.punctuated_word || w.word;
+    if (last && last.spk === spk) last.text += " " + t; else runs.push({ spk, text: t });
+  }
+  const lb = liveBubble; liveBubble = null;
+  lastCommitted = roleFor(runs[runs.length - 1].spk);
+  runs.forEach((r, i) => addBubble(r.text, i === 0 ? lb : null, roleFor(r.spk)));
+  if (!runs.length) lb?.el.remove();
+}
+
+function onDG(msg) {
+  if (msg.type === "UtteranceEnd") return flushDG();
+  if (msg.type !== "Results") return;
+  const alt = msg.channel?.alternatives?.[0];
+  const text = (alt?.transcript || "").trim();
+  if (text) {
+    const lastW = alt.words?.[alt.words.length - 1];
+    // interim words have unreliable speaker ids: trust final words, otherwise guess the other person is talking
+    const role = msg.is_final && lastW ? roleFor(lastW.speaker ?? 0)
+      : segWords.length ? roleFor(segWords[segWords.length - 1].speaker ?? 0)
+      : lastCommitted === "rep" ? "customer" : lastCommitted === "customer" ? "rep" : "rep";
+    if (msg.is_final) {
+      segWords.push(...(alt.words || []));
+      showLive(segWords.map(w => w.punctuated_word || w.word).join(" "), role);
+    } else {
+      showLive([...segWords.map(w => w.punctuated_word || w.word), text].join(" "), role);
+    }
+  }
+  if (msg.is_final && msg.speech_final) flushDG();
+}
+
+async function startDG() {
+  setStatus("Connecting…", "Allow the microphone if asked");
+  try {
+    const { key } = await (await fetch("/api/dg-key")).json();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
+    // Raw 16 kHz PCM straight from the mic, in 50 ms pieces: no encoder or container delay.
+    audioCtx = new AudioContext({ sampleRate: 16000 });
+    const workletSrc = `class P extends AudioWorkletProcessor {
+      constructor() { super(); this.b = []; this.n = 0; }
+      process(inputs) {
+        const ch = inputs[0][0];
+        if (ch) {
+          this.b.push(new Float32Array(ch)); this.n += ch.length;
+          if (this.n >= 800) {
+            const out = new Int16Array(this.n); let o = 0;
+            for (const a of this.b) for (let i = 0; i < a.length; i++) { const s = Math.max(-1, Math.min(1, a[i])); out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff; }
+            this.port.postMessage(out.buffer, [out.buffer]); this.b = []; this.n = 0;
+          }
+        }
+        return true;
+      }
+    }
+    registerProcessor("pcm", P);`;
+    await audioCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([workletSrc], { type: "application/javascript" })));
+    const url = `wss://api.deepgram.com/v1/listen?model=nova-3&language=en&diarize=true&punctuate=true&smart_format=true`
+      + `&encoding=linear16&sample_rate=${audioCtx.sampleRate}&channels=1&interim_results=true&endpointing=250&utterance_end_ms=1000`;
+    dg = new WebSocket(url, ["token", key]);
+    dg.onopen = () => {
+      const src = audioCtx.createMediaStreamSource(micStream);
+      pcmNode = new AudioWorkletNode(audioCtx, "pcm");
+      pcmNode.port.onmessage = e => { if (dg && dg.readyState === 1) dg.send(e.data); };
+      src.connect(pcmNode);
+      listening = true;
+      $("mic").classList.add("on"); $("mic").textContent = "⏹";
+      setStatus("Listening (Deepgram)", "First voice heard = Rep. Wrong way round? Tap Swap");
+    };
+    dg.onmessage = m => { try { onDG(JSON.parse(m.data)); } catch (e) { console.error("onDG error", e); } };
+    dg.onerror = () => setStatus("Deepgram connection problem", "Check the key in .env");
+    dg.onclose = () => { if (listening) { stop(); setStatus("Disconnected", "Tap the mic to start again"); } };
+  } catch (e) {
+    setStatus("Couldn't start Deepgram", String(e.message || e));
+    micStream?.getTracks().forEach(t => t.stop());
+  }
+}
+
+function stopDG() {
+  try { pcmNode?.disconnect(); audioCtx?.close(); } catch {}
+  try { dg?.readyState === 1 && dg.send(JSON.stringify({ type: "CloseStream" })); dg?.close(); } catch {}
+  micStream?.getTracks().forEach(t => t.stop());
+  dg = pcmNode = audioCtx = micStream = null;
+  flushDG();
+}
+
+let stallTimer = null;
+// The browser can sit on a line for seconds before calling it "final", which merges turns and feels slow.
+// If the words stop changing for 0.7s, commit the line ourselves and restart the recognizer for the next speaker.
+function commitLive() {
+  if (!liveBubble) return;
+  const lb = liveBubble, text = lb.el.textContent.trim();
+  liveBubble = null;
+  if (text) addBubble(text, lb); else lb.el.remove();
+  try { rec.abort(); } catch {}      // onend restarts a fresh session
+}
+
+function start() {
+  rec = new SR();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = "en-US";
+  rec.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i], text = r[0].transcript.trim();
+      if (!text) continue;
+      if (!liveBubble) {
+        $("empty")?.remove();
+        liveBubble = { el: document.createElement("div"), card: null };
+        liveBubble.el.className = "bubble live";
+        $("col").appendChild(liveBubble.el);
+      }
+      clearTimeout(stallTimer);
+      if (r.isFinal) { const lb = liveBubble; liveBubble = null; addBubble(text, lb); }
+      else {
+        liveBubble.el.textContent = text;
+        // show a card as soon as the objection is spoken, before the sentence ends
+        const c = match(text);
+        if (c && (!liveBubble.card || liveBubble.card.id !== c.id)) {
+          liveBubble.card?.el.remove();
+          liveBubble.card = { id: c.id, el: addCard(c) };
+        }
+        stallTimer = setTimeout(commitLive, 700);   // don't wait for the browser's slow "final"
+        scroll();
+      }
+    }
+  };
+  rec.onstart = () => setStatus("Listening…", "Cards pop up when a customer pushes back");
+  rec.onend = () => { if (listening) setTimeout(() => { try { rec.start(); } catch {} }, 30); };
+  rec.onerror = e => { if (e.error !== "no-speech" && e.error !== "aborted") setStatus("Mic problem: " + e.error, "Check mic permission and use Chrome or Edge"); };
+  rec.start();
+  listening = true;
+  $("mic").classList.add("on");
+  $("mic").textContent = "⏹";
+  setStatus("Listening…", "Cards pop up when a customer pushes back");
+}
+
+function stop() {
+  listening = false;
+  clearTimeout(stallTimer);
+  stopDG();
+  rec && rec.stop();
+  if (liveBubble) { liveBubble.el.remove(); liveBubble = null; }
+  $("mic").classList.remove("on");
+  $("mic").textContent = "🎤";
+  setStatus("Not listening", "Tap the mic to start");
+}
+</script>
+</body>
+</html>
