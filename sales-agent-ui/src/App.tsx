@@ -74,7 +74,7 @@ function App(){
   const savedToRef=useRef("");
   const endingRef=useRef(false);
   const endCallLatest=useRef<()=>void>(()=>{});
-  useEffect(()=>{void fetchStatus().then(setStatus);fetchCards().then(setCards).catch(()=>undefined);},[]);
+  useEffect(()=>{void fetchStatus().then(setStatus);fetchCards().then(setCards).catch(()=>setListeningError("Coaching cards could not load. Refresh the page to reconnect."));},[]);
   /** True when the server has Deepgram + the cards: the app listens to a real microphone. Otherwise it stays in demo mode. */
   const liveEnabled=status.deepgram&&cards.length>0;
   const ensureCoach=():LiveCoach=>{
@@ -90,7 +90,7 @@ function App(){
   const startCall=(customerId?:string)=>{coachRef.current?.stop();coachRef.current=null;endingRef.current=false;setCoachCard(null);setLive(null);setReport(null);reportRef.current=null;savedToRef.current="";setReportState("idle");setReportError("");setTurns([]);setDraft("");setListeningStatus("ready");setListeningError("");setCallId(createCustomerId());setCallSaved(false);setPendingCustomerLink(false);setCallSaveError("");setLinkCustomerChoice("");setSessionCustomerId(customerId??"");navigate("new-conversation");};
   const startListening=async()=>{setListeningError("");
     if(liveEnabled){setListeningStatus("listening");try{await ensureCoach().startMic();navigate("ongoing");setNotice("Listening on your microphone. Put the call on speaker.");}catch(error){coachRef.current?.stop();coachRef.current=null;setListeningStatus("error");setListeningError(error instanceof Error?error.message:"Could not start the microphone.");}return;}
-    setListeningStatus("listening");try{if(!turns.length)await mockRealtimeSource.start(turn=>setTurns(t=>[...t,turn]));navigate("ongoing");setNotice("Mock transcript loaded. No audio is being recorded.");}catch{setListeningStatus("error");setListeningError("The demo transcript could not be loaded. Please try again.");}};
+    setListeningStatus("listening");try{if(!turns.length)await mockRealtimeSource.start(turn=>{if(cards.length)ensureCoach().typed(turn.speaker==="seller"?"rep":"customer",turn.text);else setTurns(t=>[...t,turn]);});navigate("ongoing");setNotice("Mock transcript loaded. No audio is being recorded.");}catch{setListeningStatus("error");setListeningError("The demo transcript could not be loaded. Please try again.");}};
   const stopListening=async()=>{try{coachRef.current?.stop();coachRef.current=null;await mockRealtimeSource.stop();setListeningStatus("ready");setNotice("Demo session stopped.");}catch{setListeningStatus("error");setListeningError("The session could not be stopped cleanly.");}};
   /** A customer line typed by hand: goes through the same coach as a spoken line when the server has the cards. */
   const addCustomerLine=(text:string)=>{if(cards.length){ensureCoach().typed("customer",text);}else{setTurns(t=>[...t,{id:`turn-${Date.now()}`,speaker:"customer",text,time:now(),source:"mock"}]);}};

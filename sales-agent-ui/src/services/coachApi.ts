@@ -21,7 +21,7 @@ export async function fetchCards(): Promise<Card[]> {
 /** Ask Claude which card fits a line. Leave `speaker` undefined and Claude works out who is talking. */
 export async function askCoach(text: string, speaker: CoachRole | undefined, history: string[]): Promise<CoachResult> {
   return json<CoachResult>(await fetch("/api/match", {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(30000),
     body: JSON.stringify({ text, speaker, history: history.slice(-10) }),
   }));
 }

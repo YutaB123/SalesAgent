@@ -13,7 +13,7 @@ python knowledge/store.py init
 
 The migration only adds `carrier_plan_catalog` and `carrier_plan_updates`. Initialization is idempotent and does not replace edited plans. Editing APIs are restricted to localhost in this demo; a deployed shared editor needs authenticated administrator authorization.
 
-Prices are manually verified snapshots, not automatic scraping. Base account prices and conditional advertised offers are separate. Competitor advertised offers must not be treated as a customer's actual bill. The comparison API requires a comparable customer bill and fresh verified data before calculating a base-service difference. The existing live coach is not yet wired to this catalog.
+Prices are manually verified snapshots, not automatic scraping. Base account prices and conditional advertised offers are separate. Competitor advertised offers must not be treated as a customer's actual bill. The comparison API requires a comparable customer bill and fresh verified data before calculating a base-service difference. Live coaching and post-call analysis read the catalog from the configured database for each request. Coaching falls back to source-neutral guidance while the model writes a tailored response.
 
 Official sources:
 - https://www.t-mobile.com/cell-phone-plans

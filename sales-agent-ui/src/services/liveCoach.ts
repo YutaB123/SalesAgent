@@ -145,7 +145,7 @@ export class LiveCoach {
     const n = wordCount(text);
     if (n < 4 || n < utt.lastLen + 3) return;
     utt.busy = true; utt.lastLen = n; utt.calls += 1;
-    askCoach(text, undefined, this.history)   // Claude also checks it's the customer talking
+    askCoach(text, role, this.history)   // Claude also checks it's the customer talking
       .then((out) => {
         utt.out = out; utt.outWords = n;
         const card = this.cards.find((c) => c.id === out.card);
@@ -155,7 +155,7 @@ export class LiveCoach {
           this.show(card, content ?? contentOf(card), !!content);
         }
       })
-      .catch(() => { /* the keyword card (if any) is enough */ })
+      .catch(() => { this.hooks.onError("Coaching request failed. Showing guidance while you retry the next customer statement."); })
       .finally(() => { utt.busy = false; });
   }
 
@@ -179,6 +179,11 @@ export class LiveCoach {
   private async processFinal(role: CoachRole, text: string, utt?: Utterance): Promise<void> {
     if (role === "rep") { this.history.push("Rep: " + text); return; }
     const local = matchKeywords(this.cards, text);
+    // Show useful guidance immediately, including during introductions.
+    if (!this.shown && !local) {
+      const opening = this.cards.find(c => c.id === "discovery");
+      if (opening) this.show(opening, contentOf(opening), false);
+    }
     if (local && this.shown?.card.id !== local.id) this.show(local, contentOf(local), false);
     if (local?.stop) { this.history.push("Customer: " + text); return; }   // a hard no never waits on the network
 
@@ -187,7 +192,7 @@ export class LiveCoach {
       try {
         // Claude may already have answered while they were still talking: reuse it if the line barely grew.
         out = utt?.out && wordCount(text) <= utt.outWords + 2 ? utt.out : await askCoach(text, role, this.history);
-      } catch { out = null; }
+      } catch { out = null; this.hooks.onError("Coaching request failed. Showing guidance; send the customer statement again to retry."); }
     }
     this.history.push("Customer: " + text);
     if (!out) return;

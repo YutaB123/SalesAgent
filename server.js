@@ -13,61 +13,14 @@ try {
   }
 } catch {}
 
-const { CARDS } = require("./cards.js");
+const { safeCards, systemPrompt } = require("./knowledge/coaching");
+const CARDS = safeCards(require("./cards.js").CARDS);
+const { operation: planOperation } = require("./knowledge/api");
+const { planSheet } = require("./knowledge/comparison");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
 const PORT = process.env.PORT || 3000;
-
-const PLAN_SHEET = `Fictional demo plan "Pink Plus": $65/mo per line, unlimited data, 5-year price lock, free streaming add-on.
-Plan is changed on one call, no store visit, no new SIM.
-PROMOTION (fictional): existing customers who switch to Pink Plus THIS MONTH get a $150 bill credit, and up to $300 of their remaining phone balance is paid off as bill credit. The promotion ends at the end of this month. The only condition is switching this month; everything is in writing. No other discounts or price changes are available besides this promotion; the rep cannot lower the $65 price.
-NOT covered by this sheet (the rep must say they will confirm these in writing, never guess): what happens after the five-year price lock, taxes and fees, hotspot and roaming terms, cancellation terms, coverage at a specific address, device prices.
-(All of this is fictional, for a hackathon demo.)`;
-
-function systemPrompt(cards) {
-  return `You are a live sales-coaching assistant. A new sales rep is on a phone call with an EXISTING customer, offering a new plan. The call is transcribed from one microphone, so lines have no speaker labels. You get the recent lines (already labeled by you earlier) and one new line.
-
-Step 1: decide who said the new line.
-- "rep": the salesperson. They greet, introduce T-Mobile, describe plans and prices, ask discovery questions, handle objections, propose next steps.
-- "customer": the person being called. They answer, ask about their bill, push back, object, ask questions about the offer, agree or decline.
-Use the conversation flow: a question from the rep is usually followed by the customer's answer, and vice versa. Short replies like "okay" or "yeah" usually come from whoever was just asked something.
-
-Step 2: only if the speaker is the customer, decide whether the line needs a coaching card. A card is needed when the customer pushes back, rejects, hesitates, OR asks a question. These card types are STRATEGIES. Pick the type that fits; the words on the card are written fresh from what the customer said (see Step 3).
-${cards.map(c => `- ${c.id}: ${c.title}${c.kind === "question" ? " [question]" : ""}. ${c.meaning}`).join("\n")}
-
-Choosing rules:
-- Never pick a card for a rep line. Ignore greetings and small talk.
-- If the customer clearly asks not to be contacted again, always choose "hard-no".
-- Choose "none" when the customer is only ANSWERING the rep's question (how they use their phone, their name, what they pay), making small talk, saying "okay", or agreeing.
-- ALWAYS HAVE AN ANSWER: if the customer asks any question and no type fits, choose "answer".
-
-Step 3: WRITE THE CARD FROM THEIR WORDS. The reader is a brand new salesperson in the middle of a call, so everything is plain words they can say out loud. Never write coaching notes like "compare total cost".
-- The card must be clearly about THIS customer and THIS sentence. If it could sit under any customer's objection of that type, it is wrong: rewrite it.
-- "agree": ONE sentence (max 14 words) that picks up a specific thing they said: a number, a name, a competitor, a family member, a reason, or their own phrase. Not a stock phrase like "I understand, price matters."
-- "points": exactly 2 statements (max 14 words each) that answer THEIR specific point using the plan sheet. When they give numbers (what they pay, a competitor's price, a balance owed, how many lines, a date), USE their numbers and do the simple arithmetic out loud: "$65 against your $90 is $25 less a month", "we cover up to $300 of the $400, so about $100 is left", "the $150 credit is more than two months of Pink Plus". Only do arithmetic on numbers the customer actually said and numbers in the plan sheet, say "about" when rounding, and ONLY when the result supports choosing us (our price is lower than theirs, the credit equals about two months of the plan, the payoff covers part of their balance). When THEIR number is lower than ours, never say the gap out loud: acknowledge the number neutrally, ask what it includes (taxes and fees, promo length, how many lines), and lead with what we offer: the five-year price lock, the $150 credit, the payoff, free streaming.
-- "ask": ONE question (max 12 words) that follows from what they said: the missing fact you need, or the next small step. Address the customer as "you".
-- For [question] cards: "agree" is the DIRECT ANSWER to what they asked (answer first, no filler), with the real number from the plan sheet.
-- Use the history. Do not repeat a point the rep already made earlier in the call, and mention the "ends this month" deadline at most once per call.
-- If the plan sheet does not cover what they asked, say you will confirm it and send it in writing. Never guess a fact, price, policy or date, and never describe what happens after the price lock ends, what taxes or fees apply, hotspot or roaming terms, or cancellation terms: those are NOT in the plan sheet.
-- Every point must be a sentence the rep can say TO the customer. Never put advice for the rep on the card (nothing like "so the value has to be clear" or "keep it short").
-- Always exactly 2 points.
-- Persuade by being specific and relevant, never by pressure. No fake scarcity, no guilt or fear, no pushing after a clear no. Do not promise the customer's total bill will drop (you do not know their bill); compare only the numbers they gave you.
-
-Style examples (the SHAPE to copy, never the words):
-  Customer: "I'm paying ninety a month for one line right now."  ->  agree "Ninety for one line, got it."  points ["Pink Plus is $65 for that line, about $25 less", "Price locked five years, plus a $150 credit this month"]  ask "Is that ninety with taxes included?"
-  Customer: "I still owe about four hundred on my phone."  ->  agree "Four hundred still owed, that's covered in part."  points ["We pay off up to $300 as bill credit", "That would leave about $100 for you"]  ask "Is that on one phone or two?"
-  Customer: "My wife handles all the phone stuff."  ->  agree "Makes sense that she handles it."  points ["I'm happy to walk you both through it", "The $150 credit ends this month, so timing matters"]  ask "Is she free tonight or tomorrow?"
-  Customer: "Verizon offered my sister three lines for 120 total."  ->  agree "Three lines for 120, that is worth comparing."  points ["Ours is locked for five years, plus a $150 credit to switch", "Unlimited data and free streaming come with it"]  ask "What does her 120 include with taxes and fees?"
-
-Plan sheet:
-${PLAN_SHEET}
-
-Reply with ONLY JSON, no other text:
-{"speaker":"rep" or "customer","card":"<id or none>","agree":"<sentence>","points":["<point>","<point>"],"ask":"<question>"}
-For hard-no use agree "Understood, I'll remove you now.", points ["Confirm they're removed","Thank them and end the call"], ask "".
-If the card is "none" or the speaker is the rep, use empty strings and an empty array.`;
-}
 
 // The card list in the shape the prompt uses (the page sends the same thing).
 function cardsForClaude() {
@@ -77,16 +30,17 @@ function cardsForClaude() {
 async function match(body) {
   const { text, history = [], speaker: known } = body;
   const cards = body.cards || cardsForClaude();
+  const catalog = await planOperation("list");
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 200,
+      max_tokens: 500,
       // no reasoning tokens: keeps replies fast and the JSON short. Haiku and the larger models name this setting differently.
       thinking: { type: /haiku/i.test(MODEL) ? "disabled" : "between_tools" },
-      system: systemPrompt(cards),
+      system: systemPrompt(cards, catalog),
       messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
     }),
   });
@@ -99,8 +53,9 @@ async function match(body) {
   const speaker = known || (json.speaker === "rep" ? "rep" : "customer");
   const valid = speaker === "customer" && cards.some(c => c.id === json.card);
   const clean = t => String(t || "").trim();
+  const fallback = CARDS.find(c => c.id === json.card);
   const points = valid && Array.isArray(json.points) ? json.points.map(clean).filter(Boolean).slice(0, 3) : [];
-  return { speaker, card: valid ? json.card : "none", agree: valid ? clean(json.agree) : "", points, ask: valid ? clean(json.ask) : "" };
+  return { speaker, card: valid ? json.card : "none", agree: valid ? clean(json.agree) : "", points: valid && !points.length ? fallback?.points || [] : points, ask: valid ? clean(json.ask) : "" };
 }
 
 const UI_DIR = path.join(__dirname, "sales-agent-ui", "dist");
@@ -160,7 +115,7 @@ http.createServer(async (req, res) => {
       if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
       const { lines } = JSON.parse(raw);
       if (!Array.isArray(lines) || !lines.length) throw new Error("send {\"lines\": [{speaker, text}, ...]}");
-      const report = await runAnalysis({ lines, product_context: PLAN_SHEET });
+      const report = await runAnalysis({ lines, product_context: planSheet(await planOperation("list")) });
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ report }));
     } catch (e) {
