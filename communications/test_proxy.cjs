@@ -1,0 +1,22 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const http=require('node:http');
+const {handleCommunications}=require('./proxy.js');
+const listen=server=>new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+test('communications proxy keeps service credentials server-side and protects backend-only routes',async t=>{
+ let upstreamAuth=null;
+ const upstream=http.createServer((req,res)=>{upstreamAuth=req.headers.authorization;res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({ready:true}))});
+ await listen(upstream);
+ const oldPort=process.env.COMMUNICATIONS_PORT,oldToken=process.env.COMMUNICATIONS_SERVICE_TOKEN;
+ process.env.COMMUNICATIONS_PORT=String(upstream.address().port);process.env.COMMUNICATIONS_SERVICE_TOKEN='test-only-token';
+ const site=http.createServer(async(req,res)=>{if(!await handleCommunications(req,res)){res.writeHead(404);res.end()}});
+ await listen(site);
+ t.after(()=>{site.close();upstream.close();if(oldPort===undefined)delete process.env.COMMUNICATIONS_PORT;else process.env.COMMUNICATIONS_PORT=oldPort;if(oldToken===undefined)delete process.env.COMMUNICATIONS_SERVICE_TOKEN;else process.env.COMMUNICATIONS_SERVICE_TOKEN=oldToken});
+ const base='http://127.0.0.1:'+site.address().port;
+ const response=await fetch(base+'/api/comms/state');
+ assert.equal(response.status,200);assert.equal(upstreamAuth,'Bearer test-only-token');
+ assert.deepEqual(await response.json(),{ready:true});
+ assert.equal((await fetch(base+'/api/comms/transcriber-token',{method:'POST',headers:{'X-Comms-Action':'1'}})).status,404);
+ assert.equal((await fetch(base+'/api/comms/dial',{method:'POST'})).status,403);
+ assert.equal((await fetch(base+'/api/comms/../../.env')).status,404);
+});

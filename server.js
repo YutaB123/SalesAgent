@@ -99,6 +99,7 @@ async function match(body) {
 }
 
 http.createServer(async (req, res) => {
+  if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
   if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
