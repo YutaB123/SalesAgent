@@ -47,4 +47,34 @@ class CommunicationsTests(unittest.TestCase):
         service.emit('call.answered', callId='test')
         self.assertNotEqual(service.EVENTS[0]['eventId'], service.EVENTS[1]['eventId'])
 
+class SellerGraceTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        service.EVENTS.clear()
+        service.CURRENT = dict(callId='abc', participant='outbound-' + 'a' * 32, state='answered')
+
+    async def test_seller_comes_back_in_time_keeps_the_call(self):
+        with patch.object(service.photon, 'hangup') as hangup:
+            ended = await service.hang_up_if_seller_stays_gone('abc', lambda: True, delay=0)
+        self.assertFalse(ended)
+        hangup.assert_not_called()
+        self.assertEqual(service.CURRENT['state'], 'answered')
+        self.assertEqual(service.EVENTS[-1]['type'], 'seller.reconnected')
+
+    async def test_seller_never_returns_hangs_up(self):
+        async def fake_hangup(identity): return {}
+        with patch.object(service.photon, 'hangup', side_effect=fake_hangup) as hangup:
+            ended = await service.hang_up_if_seller_stays_gone('abc', lambda: False, delay=0)
+        self.assertTrue(ended)
+        hangup.assert_called_once()
+        self.assertEqual(service.CURRENT['state'], 'ended')
+
+    async def test_does_nothing_if_the_call_already_ended_or_is_a_different_call(self):
+        with patch.object(service.photon, 'hangup') as hangup:
+            service.CURRENT['state'] = 'ended'
+            self.assertFalse(await service.hang_up_if_seller_stays_gone('abc', lambda: False, delay=0))
+            service.CURRENT = dict(callId='other', participant='outbound-' + 'b' * 32, state='answered')
+            self.assertFalse(await service.hang_up_if_seller_stays_gone('abc', lambda: False, delay=0))
+        hangup.assert_not_called()
+
+
 if __name__ == '__main__':unittest.main()

@@ -42,6 +42,13 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
   const [muted, setMuted] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
   const active = !["idle", "ended", "failed"].includes(callState);
+  // Reloading or closing this tab drops you out of the phone room, which hangs up on the customer. Ask first.
+  useEffect(() => {
+    if (!active) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [active]);
   const onTrack = useRef(onAudioTrack); onTrack.current = onAudioTrack;
   const onEnded = useRef(onCallEnded); onEnded.current = onCallEnded;
 
@@ -57,7 +64,11 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
         await loadScript("/communications/browser.js");
         if (!window.SalesAgentCommunications) throw new Error("The phone module did not load.");
         const comms = new window.SalesAgentCommunications();
-        comms.addEventListener("status", (e) => setMessage((e as CustomEvent).detail.message));
+        comms.addEventListener("status", (e) => {
+          const d = (e as CustomEvent).detail;
+          setMessage(d.message);
+          if (d.connected === false) { setPhase("ready"); setMessage("Your audio link dropped. Click Connect microphone to join again."); }   // do not leave dead buttons on screen
+        });
         comms.addEventListener("error", (e) => setMessage((e as CustomEvent).detail.message));
         comms.addEventListener("playbackBlocked", () => setSoundBlocked(true));
         // Audio tracks show up while connecting and while ringing, but we only START listening once the customer answers.

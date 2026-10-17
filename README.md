@@ -139,6 +139,7 @@ More API routes added by the merge: `GET /api/cards` (the cards as JSON), `POST 
 | Rep and customer are swapped | Click **Swap Rep/Cust**, or click a single bubble to flip just that line. |
 | Nothing transcribes | Check the microphone permission in the browser, and use Chrome or Edge. |
 | Cards feel slow | Use a quiet room and speakerphone close to the mic. |
+| A phone call ends by itself | Keep **one** browser tab open on the app (a second tab or a reload takes your seat in the phone room; the service waits 15 seconds for you to return, then hangs up) and do not reload during a call (the browser now asks first). To see what ended a call, open `http://localhost:8765/api/comms/events?after=0`: `call.sip_status` `hangup` means the phone side ended it, and `participant.left` shows the reason. Calls also stop at 10 minutes. |
 
 ## Good to know
 

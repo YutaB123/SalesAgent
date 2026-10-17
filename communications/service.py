@@ -60,6 +60,25 @@ def set_call(call_id, state, **fields):
     emit('call.' + state, callId=call_id, **fields)
 
 
+# If the salesperson's browser drops out of the room, do not hang up on the customer at once. A second tab, a page
+# reload or a network blip replaces or restarts the browser session within seconds. Only hang up if nobody comes back.
+SELLER_GRACE_SECONDS = float(os.environ.get('SELLER_GRACE_SECONDS', '15'))
+
+
+async def hang_up_if_seller_stays_gone(call_id, seller_present, delay=None):
+    await asyncio.sleep(SELLER_GRACE_SECONDS if delay is None else delay)
+    if seller_present():
+        emit('seller.reconnected', callId=call_id)   # the call carries on
+        return False
+    with LOCK:
+        call = dict(CURRENT) if CURRENT else None
+    if not call or call['callId'] != call_id or call['state'] in ('ended', 'failed'):
+        return False
+    set_call(call_id, 'ended')
+    await photon.hangup(call['participant'])
+    return True
+
+
 def dial_worker(recipient, call_id):
     identity = 'outbound-' + call_id
     async def run():
@@ -216,6 +235,8 @@ async def main():
     @room.on('participant_disconnected')
     def disconnected(participant):
         seller_state()
+        # Diagnostic: why did they leave? Only the reason is recorded, never a phone number.
+        emit('participant.left', participant=participant.identity, reason=str(getattr(participant, 'disconnect_reason', 'unknown')))
         if participant.identity.startswith('outbound-'):
             set_call(participant.identity.removeprefix('outbound-'), 'ended')
         if participant.identity == 'seller-browser':
@@ -223,8 +244,8 @@ async def main():
             with LOCK:
                 call = dict(CURRENT) if CURRENT else None
             if call and call['state'] not in ('ended', 'failed'):
-                set_call(call['callId'], 'ended')
-                asyncio.create_task(photon.hangup(call['participant']))
+                asyncio.create_task(hang_up_if_seller_stays_gone(
+                    call['callId'], lambda: any(p.identity == 'seller-browser' for p in room.remote_participants.values())))
 
     @room.on('disconnected')
     def room_disconnected(*args):
