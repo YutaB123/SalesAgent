@@ -41,6 +41,43 @@ A live coaching tool for brand new sales reps. It listens to a sales call, works
 - Type a line into the box at the bottom, such as `I'm still paying off my phone` or `how much is it?`, and press Enter.
 - To test with two people, read `demo-script.pdf` (or `demo-script.html`) aloud: one plays the rep and one plays the customer.
 
+## For teammates: using the agent from your own code
+
+The agent is one HTTP endpoint. Give it a transcript, and it returns the coaching card for every customer line. You don't need to touch the cards or the prompt.
+
+```
+POST http://localhost:3000/api/analyze
+Content-Type: application/json
+
+{ "lines": [
+    { "speaker": "rep",      "text": "Hi, this is Sam from T-Mobile." },
+    { "speaker": "customer", "text": "Honestly I'm happy with my current plan." },
+    { "text": "I'd have to ask my wife first." }
+] }
+```
+
+`speaker` is `"rep"` or `"customer"`. Leave it out and Claude works it out from the conversation. The reply has one result per line, in order:
+
+```
+{ "results": [
+  { "index": 0, "text": "Hi, this is Sam from T-Mobile.", "speaker": "rep", "card": "none", "agree": "", "points": [], "ask": "" },
+  { "index": 1, "text": "Honestly I'm happy with my current plan.", "speaker": "customer",
+    "card": "happy-current",
+    "agree": "Glad it's working for you.",
+    "points": ["Your price is locked for five years", "You get free streaming and a $150 credit"],
+    "ask": "Is there anything you'd change?" }
+] }
+```
+
+- `card` is a card `id` from `cards.js`, or `"none"` when no card is needed (rep lines, small talk).
+- `agree`, `points`, `ask` are the card's three steps: say, then explain, then ask. Save them as-is.
+- Lines are checked one after another so each one sees the lines before it, which costs roughly one second per customer line (a 5-line test took about 3 seconds). Lines marked `"rep"` are skipped and cost nothing.
+- Errors come back as `{ "error": "..." }`.
+
+For one line at a time during a live call, use `POST /api/match` with `{ "text", "speaker", "history" }`.
+
+The cards live in `cards.js`. To change wording or add a card, edit that file and restart the server. No other code changes.
+
 ## If something is off
 
 | Problem | Fix |
@@ -61,7 +98,8 @@ A live coaching tool for brand new sales reps. It listens to a sales call, works
 
 | File | What it is |
 |---|---|
-| `index.html` | The whole app (chat, cards, microphone and Deepgram code) |
-| `server.js` | Small local server: serves the page and calls Claude |
+| `cards.js` | All the coaching cards (edit this to change what reps see) |
+| `index.html` | The live app (chat, card display, microphone and Deepgram code) |
+| `server.js` | Small local server: serves the page, calls Claude, and exposes `/api/analyze` |
 | `demo-script.html` / `.pdf` | A demo call to read aloud |
 | `.env.example` | Template for your API keys |

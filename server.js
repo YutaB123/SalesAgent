@@ -12,6 +12,7 @@ try {
   }
 } catch {}
 
+const { CARDS } = require("./cards.js");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-haiku-5-5";   // fast model for live calls
@@ -64,8 +65,14 @@ For hard-no use agree "Understood, I'll remove you now.", points ["Confirm they'
 If the card is "none" or the speaker is the rep, use empty strings and an empty array.`;
 }
 
+// The card list in the shape the prompt uses (the page sends the same thing).
+function cardsForClaude() {
+  return CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, example: { agree: c.agree, points: c.points, ask: c.ask } }));
+}
+
 async function match(body) {
-  const { text, history = [], cards = [], speaker: known } = body;
+  const { text, history = [], speaker: known } = body;
+  const cards = body.cards || cardsForClaude();
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -95,6 +102,37 @@ http.createServer(async (req, res) => {
   if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
+  }
+  if (req.method === "GET" && req.url === "/cards.js") {
+    res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" });
+    return res.end(fs.readFileSync(path.join(__dirname, "cards.js")));
+  }
+  // For teammates: send a whole transcript, get back the card for every customer line.
+  //   POST /api/analyze  { "lines": [ { "speaker": "rep"|"customer"|undefined, "text": "..." } ] }
+  if (req.method === "POST" && req.url === "/api/analyze") {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    try {
+      if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
+      const { lines } = JSON.parse(raw);
+      if (!Array.isArray(lines)) throw new Error("send {\"lines\": [{speaker, text}, ...]}");
+      const history = [], results = [];
+      for (const [i, l] of lines.entries()) {
+        const text = String(l.text || "").trim();
+        const speaker = l.speaker === "rep" || l.speaker === "customer" ? l.speaker : undefined;
+        let out = { speaker: speaker || "customer", card: "none", agree: "", points: [], ask: "" };
+        if (text && speaker !== "rep") out = await match({ text, speaker, history });   // rep lines never need a card
+        history.push((out.speaker === "rep" ? "Rep: " : "Customer: ") + text);
+        results.push({ index: i, text, ...out });
+      }
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ results }));
+    } catch (e) {
+      console.error(e.message);
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
   }
   if (req.method === "GET" && req.url === "/api/status") {
     res.writeHead(200, { "content-type": "application/json" });
