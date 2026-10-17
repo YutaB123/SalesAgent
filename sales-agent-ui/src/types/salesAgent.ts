@@ -30,7 +30,7 @@ export interface TrackedCustomer {
   purchaseStage: string;
   followUpDate: string;
   notes: string;
-  readiness: number;
+  readiness?: number;
   lastContact: string;
   summary: string;
   callHistory: CustomerCallHistory[];

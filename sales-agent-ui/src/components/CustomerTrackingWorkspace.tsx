@@ -1,38 +1,62 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Check, Pencil, Plus, Save, Search, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Pencil, Plus, Save, Search, Sparkles, Trash2, X } from "lucide-react";
 import { followUps as initialFollowUps } from "../data/mockData";
 import { createCustomerId, customerRepository } from "../services/customerRepository";
 import type { FollowUpTask, TrackedCustomer } from "../types/salesAgent";
+import { followUpUrgency, groupAndSortCustomers, matchesCustomerTrackingFilters, readinessGroups, readinessScore, readinessTier, validReadinessScore } from "../utils/customerPrioritization";
 import { AssistantMascot } from "./AssistantMascot";
 import { FollowUpCard, Panel, PageHeading } from "./Cards";
 
 type TaskDraft = { title: string; owner: string; due: string };
 type CustomerDraft = Omit<TrackedCustomer, "callHistory" | "readiness" | "lastContact" | "summary" | "isSample">;
+type ReadinessGroupId = typeof readinessGroups[number]["id"];
 const blankTask = (): TaskDraft => ({ title: "", owner: "Sales Team", due: "Within 1 day" });
 const blankCustomer = (): CustomerDraft => ({ id: "", name: "", company: "", role: "", contact: "", needs: "", concerns: "", productDiscussed: "", purchaseStage: "Discovery", followUpDate: "", notes: "" });
 const stages = ["Discovery", "Evaluation", "Decision", "Purchased", "Not moving forward"];
 
 function loadTasks(): Record<string, FollowUpTask[]> {
-  try { const saved = localStorage.getItem("sales-agent-account-tasks-v1"); if (saved) return JSON.parse(saved) as Record<string, FollowUpTask[]>; } catch { /* Fall back to demo tasks. */ }
+  try {
+    const saved = localStorage.getItem("sales-agent-account-tasks-v1");
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return Object.fromEntries(Object.entries(parsed).map(([customerId, tasks]) => [customerId, Array.isArray(tasks) ? tasks.filter((task): task is FollowUpTask => Boolean(task && typeof task === "object" && typeof task.id === "string" && typeof task.title === "string" && typeof task.owner === "string" && typeof task.due === "string")) : []]));
+      }
+    }
+  } catch { /* Fall back to demo tasks. */ }
   return { "demo-01": initialFollowUps.map((task) => ({ ...task })) };
 }
 function loadScores(): Record<string, number> {
-  try { const saved = localStorage.getItem("sales-agent-account-scores-v1"); if (saved) return JSON.parse(saved) as Record<string, number>; } catch { /* Fall back to demo scores. */ }
-  return { "demo-01": 7, "demo-02": 8, "demo-03": 5 };
+  try {
+    const saved = localStorage.getItem("sales-agent-account-scores-v1");
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, number>;
+    }
+  } catch { /* Missing or malformed scores stay unscored. */ }
+  return {};
 }
 function initials(name: string) { return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "?"; }
-function taskStatus(customer: TrackedCustomer, tasks: FollowUpTask[]) {
-  if (tasks.some((task) => !task.completed)) return "Follow-up open";
-  if (customer.followUpDate) return new Date(`${customer.followUpDate}T23:59:59`) < new Date() ? "Follow-up overdue" : "Follow-up scheduled";
-  return "No open follow-up";
+function urgencyLabel(urgency: ReturnType<typeof followUpUrgency>, date: string) {
+  if (urgency === "overdue") return `Overdue · ${formatDateOnly(date)}`;
+  if (urgency === "today") return "Due today";
+  if (urgency === "upcoming") return `Upcoming · ${formatDateOnly(date)}`;
+  if (urgency === "open-no-date") return "Open · No date";
+  return "No follow-up";
+}
+function formatDateOnly(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return "No date";
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 function hasRecentActivity(customer: TrackedCustomer) {
-  if (!customer.callHistory.length) return false;
+  if (!customer.callHistory?.length) return false;
   const newest = new Date(customer.callHistory[0].date).getTime();
   return Number.isFinite(newest) && Date.now() - newest <= 7 * 24 * 60 * 60 * 1000;
 }
 function tasksFor(customer: TrackedCustomer, tasksByCustomer: Record<string, FollowUpTask[]>) {
-  return tasksByCustomer[customer.id] ?? (customer.isSample ? initialFollowUps : []);
+  const saved = tasksByCustomer[customer.id];
+  return Array.isArray(saved) ? saved : (customer.isSample ? initialFollowUps : []);
 }
 
 export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConversation: (customerId?: string) => void }) {
@@ -41,8 +65,9 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
   const [tasksByCustomer, setTasksByCustomer] = useState<Record<string, FollowUpTask[]>>(loadTasks);
   const [scores, setScores] = useState<Record<string, number>>(loadScores);
   const [query, setQuery] = useState("");
-  const [followUpFilter, setFollowUpFilter] = useState("all");
-  const [activityFilter, setActivityFilter] = useState("all");
+  const [followUpFilter, setFollowUpFilter] = useState<"all" | "open" | "none">("all");
+  const [activityFilter, setActivityFilter] = useState<"all" | "recent">("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<Partial<Record<ReadinessGroupId, boolean>>>({});
   const [customerDraft, setCustomerDraft] = useState<CustomerDraft>(blankCustomer);
   const [customerError, setCustomerError] = useState("");
   const [customerForm, setCustomerForm] = useState<"add" | "edit" | null>(null);
@@ -51,22 +76,21 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [taskDraft, setTaskDraft] = useState<TaskDraft>(blankTask);
+  const activeFilters = Boolean(query.trim()) || followUpFilter !== "all" || activityFilter !== "all";
 
   useEffect(() => { try { localStorage.setItem("sales-agent-account-tasks-v1", JSON.stringify(tasksByCustomer)); } catch { setStorageError("Could not save follow-up actions in this browser."); } }, [tasksByCustomer]);
   useEffect(() => { try { localStorage.setItem("sales-agent-account-scores-v1", JSON.stringify(scores)); } catch { setStorageError("Could not save customer scores in this browser."); } }, [scores]);
 
   const filteredCustomers = useMemo(() => customers.filter((account) => {
-    const q = query.trim().toLowerCase();
-    const matchesText = !q || account.name.toLowerCase().includes(q) || account.company.toLowerCase().includes(q);
-    const status = taskStatus(account, tasksFor(account, tasksByCustomer));
-    const matchesFollowUp = followUpFilter === "all" || (followUpFilter === "open" ? status === "Follow-up open" || status === "Follow-up scheduled" || status === "Follow-up overdue" : status === "No open follow-up");
-    const matchesActivity = activityFilter === "all" || hasRecentActivity(account);
-    return matchesText && matchesFollowUp && matchesActivity;
+    return matchesCustomerTrackingFilters(account, { query, followUp: followUpFilter, activity: activityFilter }, tasksFor(account, tasksByCustomer), hasRecentActivity(account));
   }), [customers, query, followUpFilter, activityFilter, tasksByCustomer]);
+  const groupedCustomers = useMemo(() => groupAndSortCustomers(filteredCustomers, scores, (account) => tasksFor(account, tasksByCustomer))
+    .filter((group) => !activeFilters || group.customers.length > 0), [filteredCustomers, scores, tasksByCustomer, activeFilters]);
   const selected = customers.find((account) => account.id === selectedId) ?? filteredCustomers[0] ?? customers[0];
   const tasks = selected ? tasksFor(selected, tasksByCustomer) : [];
-  const selectedScore = selected ? scores[selected.id] ?? selected.readiness : 5;
-  const status = selected ? taskStatus(selected, tasks) : "No open follow-up";
+  const selectedScore = selected ? readinessScore(selected, scores) : undefined;
+  const selectedTier = readinessGroups.find((group) => group.id === readinessTier(selectedScore));
+  const status = selected ? followUpUrgency(selected, tasks) : "none";
   useEffect(() => {
     if (filteredCustomers.length && !filteredCustomers.some((account) => account.id === selectedId)) setSelectedId(filteredCustomers[0].id);
   }, [filteredCustomers, selectedId]);
@@ -93,7 +117,7 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
       id: customerDraft.id || createCustomerId(),
       name: customerDraft.name.trim(), company: customerDraft.company.trim(), role: customerDraft.role.trim(), contact: customerDraft.contact.trim(),
       needs: customerDraft.needs.trim(), concerns: customerDraft.concerns.trim(), productDiscussed: customerDraft.productDiscussed.trim(), notes: customerDraft.notes.trim(),
-      readiness: existing?.readiness ?? 5, lastContact: existing?.lastContact ?? "", summary: existing?.summary ?? "No call summary has been saved yet.",
+      readiness: existing?.readiness, lastContact: existing?.lastContact ?? "", summary: existing?.summary ?? "No call summary has been saved yet.",
       callHistory: existing?.callHistory ?? [], isSample: false,
     };
     try { persistCustomer(customerRepository.save(nextCustomer)); setSelectedId(nextCustomer.id); setQuery(""); setFollowUpFilter("all"); setActivityFilter("all"); setCustomerForm(null); }
@@ -119,25 +143,31 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
     <PageHeading title="Customer Tracking" description="Keep each customer's account context, call history, and next steps together." action={<button className="primary-button" onClick={openAddCustomer}><Plus size={15}/> Add Customer</button>}/>
     {storageError && <div className="tracking-error" role="alert">{storageError}</div>}
     <div className="tracking-workspace">
-      <Panel title="Customers" subtitle={`${customers.length} accounts · saved on this device`}>
+      <Panel title="Customers" subtitle={`${activeFilters ? `${filteredCustomers.length} of ` : ""}${customers.length} accounts · saved on this device`}>
         <div className="customer-search"><Search size={14}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name or company" aria-label="Search customers"/></div>
-        <div className="customer-filters"><label>Follow-up<select value={followUpFilter} onChange={(event) => setFollowUpFilter(event.target.value)}><option value="all">All statuses</option><option value="open">Open / scheduled</option><option value="none">No open actions</option></select></label><label>Activity<select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value)}><option value="all">Any time</option><option value="recent">Last 7 days</option></select></label></div>
-        <div className="tracked-customer-list">{filteredCustomers.map((account) => {
-          const accountStatus = taskStatus(account, tasksByCustomer[account.id] ?? []);
-          return <button key={account.id} className={`tracked-customer-row ${selected?.id === account.id ? "active" : ""}`} onClick={() => { setSelectedId(account.id); cancelTaskEditor(); }}>
-            <span className="customer-avatar">{initials(account.name)}</span><span className="tracked-customer-copy"><strong>{account.name}</strong><small>{[account.role, account.company].filter(Boolean).join(" · ") || "Customer"}</small><em>{accountStatus}</em></span><ArrowRight size={15}/>
-          </button>;
-        })}</div>
+        <div className="customer-filters"><label>Follow-up<select value={followUpFilter} onChange={(event) => setFollowUpFilter(event.target.value as "all" | "open" | "none")}><option value="all">All statuses</option><option value="open">Open / scheduled</option><option value="none">No open actions</option></select></label><label>Activity<select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value as "all" | "recent")}><option value="all">Any time</option><option value="recent">Last 7 days</option></select></label></div>
+        <div className="tracked-customer-groups">{groupedCustomers.map((group) => <section className="tracked-customer-group" key={group.id}>
+          <button className="customer-tier-toggle" aria-expanded={!collapsedGroups[group.id]} onClick={() => setCollapsedGroups((current) => ({ ...current, [group.id]: !current[group.id] }))}>
+            <ChevronDown size={15} className={collapsedGroups[group.id] ? "collapsed" : ""}/><strong>{group.label}</strong><span className="tier-range">{group.range}</span><small>{group.customers.length} {group.customers.length === 1 ? "customer" : "customers"}</small>
+          </button>
+          {!collapsedGroups[group.id] && <div className="tracked-customer-list">{group.customers.map((account) => {
+            const urgency = followUpUrgency(account, tasksFor(account, tasksByCustomer));
+            const score = readinessScore(account, scores);
+            return <button key={account.id} className={`tracked-customer-row ${selected?.id === account.id ? "active" : ""}`} onClick={() => { setSelectedId(account.id); cancelTaskEditor(); }}>
+              <span className="customer-avatar">{initials(account.name)}</span><span className="tracked-customer-copy"><strong>{account.name}</strong><small>{[account.role, account.company].filter(Boolean).join(" · ") || "Customer"}</small><em className={`followup-urgency urgency-${urgency}`}>{urgencyLabel(urgency, account.followUpDate)}</em></span><span className="readiness-score-display">{score === undefined ? "—" : `${score}/10`}<small>{score === undefined ? "Unscored" : "Readiness"}</small></span><ArrowRight size={15}/>
+            </button>;
+          })}</div>}
+        </section>)}</div>
         {filteredCustomers.length === 0 && <div className="tracking-empty-tasks">No customers match these filters. Try another search or add a customer.</div>}
         <div className="tracking-buddy"><AssistantMascot/><span><strong>Little things add up!</strong><small>Keep each customer's follow-up personal and on time.</small></span><b>✦</b></div>
       </Panel>
       {selected ? <div className="tracking-detail">
         <Panel title="Customer overview" subtitle={selected.isSample ? "Sample account · demo information" : "Customer account"} action={<div className="customer-record-actions"><span className="stage-pill">{selected.purchaseStage}</span><button className="followup-icon-button" onClick={openEditCustomer} aria-label="Edit customer" title="Edit customer"><Pencil size={14}/></button><button className="followup-icon-button delete-action" onClick={() => setDeleteConfirm(true)} aria-label="Delete customer" title="Delete customer"><Trash2 size={14}/></button></div>}>
-          <div className="tracking-profile"><span className="customer-avatar">{initials(selected.name)}</span><div><h2>{selected.name}</h2><span>{[selected.role, selected.company].filter(Boolean).join(" · ") || "Customer"}</span></div><span className="intent-pill">{status}</span></div>
+          <div className="tracking-profile"><span className="customer-avatar">{initials(selected.name)}</span><div><h2>{selected.name}</h2><span>{[selected.role, selected.company].filter(Boolean).join(" · ") || "Customer"}</span></div><span className={`intent-pill urgency-${status}`}>Follow-up · {urgencyLabel(status, selected.followUpDate)}</span></div>
           {selected.contact && <div className="customer-contact-line">Contact · {selected.contact}</div>}
           <div className="tracking-facts"><div><small>Last contact</small><strong>{selected.lastContact ? new Date(selected.lastContact).toLocaleString() : "No call saved"}</strong></div><div><small>Product discussed</small><strong>{selected.productDiscussed || "Not specified"}</strong></div><div><small>Main concern</small><strong>{selected.concerns || "Not specified"}</strong></div></div>
           <div className="tracking-facts"><div><small>Customer needs</small><strong>{selected.needs || "Not specified"}</strong></div><div><small>Next follow-up</small><strong>{selected.followUpDate || "Not scheduled"}</strong></div><div><small>Notes</small><strong>{selected.notes || "No notes"}</strong></div></div>
-          <div className="customer-readiness"><div className="readiness-heading"><div><span>Purchase readiness</span><small>Seller estimate · out of 10</small></div><strong>{selectedScore}<small>/10</small></strong></div><input aria-label={`Purchase readiness score for ${selected.name}`} type="range" min="1" max="10" step="1" value={selectedScore} onChange={(event) => setScores((current) => ({ ...current, [selected.id]: Number(event.target.value) }))}/><div className="readiness-scale"><span>Early interest</span><span>Ready to buy</span></div></div>
+          <div className="customer-readiness"><div className="readiness-heading"><div><span>Purchase readiness</span><small>{selectedTier?.label} · seller estimate</small></div><strong>{selectedScore === undefined ? "—" : <>{selectedScore}<small>/10</small></>}</strong></div><label className="readiness-score-control"><span>Score</span><select aria-label={`Purchase readiness score for ${selected.name}`} value={selectedScore ?? ""} onChange={(event) => { const value = event.target.value; if (!value) return; const parsed = Number(value); if (validReadinessScore(parsed)) setScores((current) => ({ ...current, [selected.id]: parsed })); }}><option value="">Unscored · select 1–10</option>{Array.from({ length: 10 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score} / 10</option>)}</select></label><div className="readiness-scale"><span>Tier follows score</span><span>Follow-up urgency is separate</span></div></div>
           <div className="account-summary"><span>LATEST CALL SUMMARY <AssistantMascot/></span><p>{selected.summary}</p></div>
         </Panel>
         <Panel title="Call history" subtitle={`${selected.callHistory.length} saved call${selected.callHistory.length === 1 ? "" : "s"}`}>
