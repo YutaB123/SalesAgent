@@ -153,7 +153,7 @@ export class LiveCoach {
     const n = wordCount(text);
     if (n < 4 || n < utt.lastLen + 3) return;
     utt.busy = true; utt.lastLen = n; utt.calls += 1;
-    askCoach(text, undefined, this.history)   // Claude also checks it's the customer talking
+    askCoach(text, undefined, this.history, true)   // Claude also checks it's the customer talking; a half sentence may get "no card yet"
       .then((out) => {
         utt.out = out; utt.outWords = n;
         if (utt.id !== this.latest) return;   // a newer sentence has started: this answer is out of date
@@ -201,13 +201,22 @@ export class LiveCoach {
       } catch { out = null; }
     }
     this.history.push("Customer: " + text);
-    if (!out) return;
     if (utt.id !== this.latest) return;   // a newer sentence has started: do not replace its card with this older answer
-    const card = this.cards.find((c) => c.id === out.card);
-    if (!card) return;   // Claude saw no objection or question: keep whatever card is showing
+    const card = out ? this.cards.find((c) => c.id === out.card) : undefined;
+    if (!out || !card) {
+      // Claude failed or sent nothing usable. The rep still gets a card for this line: its keyword card if it has one,
+      // otherwise a neutral "keep it going" card, never the previous line's card left up as if it answered this one.
+      if (!local && !utt.cardId) this.showNeutral();
+      return;
+    }
     const content = toContent(out);
     if (this.shown?.card.id !== card.id) this.show(card, content ?? contentOf(card), !!content);
     else if (content) this.show(card, content, true);
+  }
+
+  private showNeutral(): void {
+    const neutral = this.cards.find((c) => c.id === "shared");
+    if (neutral) this.show(neutral, contentOf(neutral), false);
   }
 
   private show(card: Card, content: CardContent, tailored: boolean): void {

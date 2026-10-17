@@ -2,7 +2,7 @@
 //
 // Each card:
 //   id        unique name
-//   kind      "question" = the customer asked something (omit for objections)
+//   kind      "question" = the customer asked something; "keepgoing" = no objection (they shared something, agreed, or were unclear); omit for objections
 //   title     label shown on the card
 //   keys      phrases that trigger the card instantly (lowercase; longer phrases win)
 //   meaning   one line telling Claude when this card fits
@@ -19,7 +19,7 @@ const CARDS = [
     agree: "Yes, it is, and I'll be quick.", points: ["It's a $150 credit on your bill","Only if it fits you"], ask: "Want the 20-second version?" },
   { id: "busy", title: "Bad time / call me later", keys: ["bad time", "busy right now", "i'm busy", "im busy", "in a meeting", "not a good time", "call me back", "call back", "call me later", "i'm driving", "call me next month", "call next month", "call me next week", "call next week"],
     meaning: "Probably true. Get a specific time, not a vague later.",
-    agree: "No problem, this is quick.", points: ["It takes two minutes","The $150 credit ends this month"], ask: "Is tomorrow at 10 or 2 better?" },
+    agree: "No problem, this is quick.", points: ["It will be quick","The $150 credit ends this month"], ask: "Is tomorrow at 10 or 2 better?" },
   { id: "send-email", title: "Send me an email", keys: ["send me an email", "email me", "text me", "send me some", "send me info", "send me the details", "send something"],
     meaning: "Often a polite brush-off, sometimes a real request.",
     agree: "Happy to send it.", points: ["It has the same offer, in writing","The $150 credit ends this month"], ask: "Can we take two minutes now so I send the right thing?" },
@@ -70,7 +70,7 @@ const CARDS = [
     agree: "That makes sense.", points: ["I can talk to you both and send a summary","The $150 credit ends this month"], ask: "Can I call you both tonight?" },
   { id: "hassle", title: "Too much hassle", keys: ["hassle", "too much work", "too much trouble", "don't have time to switch", "don't want to deal with", "complicated", "takes too long"],
     meaning: "They picture effort, not the benefit. Shrink the effort.",
-    agree: "I understand, I'll make it easy.", points: ["One call, no store visit, no new SIM","About five minutes, and the $150 credit is included"], ask: "Want to do it now?" },
+    agree: "I understand, I'll make it easy.", points: ["One call, no store visit, no new SIM","The $150 credit is included"], ask: "Want to do it now?" },
   { id: "price", kind: "question", title: "Price", keys: ["how much is","how much does","how much will","what does it cost","what's the price","what is the price","what's the cost","what is the cost","pricing","how much per","what would it cost","price of"],
     meaning: "They want the price. Give a straight number first.",
     agree: "It's $65 per line, per month.", points: ["Your price is locked for five years","Plus a $150 credit for switching this month"], ask: "How many lines do you have?" },
@@ -94,7 +94,7 @@ const CARDS = [
     agree: "You keep your phone.", points: ["We can pay off up to $300 of the balance","It comes as a credit on your bill"], ask: "How much do you still owe?" },
   { id: "how-switch", kind: "question", title: "How does switching work", keys: ["how does it work","how do i switch","how do i sign up","what's the process","what is the process","how long does it take","how do we do this","what are the steps","what do i need to do","how would i switch"],
     meaning: "They want the steps. Keep it simple.",
-    agree: "It's one call, about five minutes.", points: ["No store visit, no new SIM","You get the $150 credit for switching"], ask: "Want to start now?" },
+    agree: "It's done on one call.", points: ["No store visit, no new SIM","You get the $150 credit for switching"], ask: "Want to start now?" },
   { id: "credit-timing", kind: "question", title: "How does the credit work", keys: ["when do i get the credit","when would i get the credit","how do i get the credit","when does the credit","how does the credit work","where does the credit go","when is the credit applied","credit show up"],
     meaning: "They want to know how the credit reaches them.",
     agree: "It's a $150 credit on your bill.", points: ["I'll confirm exactly when it shows up","Everything is in writing"], ask: "Want that in writing?" },
@@ -113,6 +113,15 @@ const CARDS = [
   { id: "add-line", kind: "question", title: "Add a line", keys: ["add a line","add another line","add a phone","more lines","extra line","add my wife","add my kid","add my husband","new line"],
     meaning: "They want another line.",
     agree: "Each line is $65 a month.", points: ["Your price is locked for five years","You get the $150 credit for switching"], ask: "How many lines do you want?" },
+  { id: "shared", kind: "keepgoing", title: "They shared something", keys: [],
+    meaning: "The customer is answering a question, giving information, or making small talk, with no objection. Use what they said to move forward.",
+    agree: "Good to know, thanks for telling me.", points: ["It helps me find the right fit for you","Pink Plus has unlimited data and a free streaming add-on"], ask: "What matters most to you in a plan?" },
+  { id: "interested", kind: "keepgoing", title: "They're interested", keys: ["sounds good","sounds great","that works","i'm interested","i am interested","let's do it","sign me up","yes please","i'd like that","that sounds interesting","go ahead"],
+    meaning: "The customer agrees, shows interest, or says yes. Confirm the next step and move to close.",
+    agree: "Great, glad that works for you.", points: ["We can switch you on this call","The $150 credit applies when you switch this month"], ask: "Want me to start now?" },
+  { id: "unclear", kind: "keepgoing", title: "Not sure what they mean", keys: ["maybe","i don't know","i dunno","hmm"],
+    meaning: "The line is short or unclear (maybe, hmm, I don't know). Do not assume an objection: ask what they are thinking.",
+    agree: "No rush, that's fair.", points: ["I'm happy to explain anything that's unclear","Nothing changes until you say yes"], ask: "What are you thinking so far?" },
   { id: "answer", kind: "question", title: "Their question", keys: [],
     meaning: "A question none of the other cards cover. Answer only what you know.",
     agree: "Good question.", points: ["Let me confirm so I give you the right answer","I'll send it to you in writing"], ask: "Can I follow up today?" },

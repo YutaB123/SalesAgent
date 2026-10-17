@@ -6,7 +6,7 @@ export type CoachRole = "rep" | "customer";
 
 export interface Card {
   id: string;
-  kind?: "question";          // set when the customer ASKED something (green card)
+  kind?: "question" | "keepgoing";   // question = they ASKED something (green); keepgoing = no objection (blue)
   title: string;
   keys: string[];             // phrases that show the card instantly
   meaning: string;

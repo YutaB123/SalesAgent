@@ -19,10 +19,11 @@ export async function fetchCards(): Promise<Card[]> {
 }
 
 /** Ask Claude which card fits a line. Leave `speaker` undefined and Claude works out who is talking. */
-export async function askCoach(text: string, speaker: CoachRole | undefined, history: string[]): Promise<CoachResult> {
+export async function askCoach(text: string, speaker: CoachRole | undefined, history: string[], partial = false): Promise<CoachResult> {
+  // partial = the customer is still mid-sentence: the server may answer "no card yet". A finished line always gets a card.
   return json<CoachResult>(await fetch("/api/match", {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, speaker, history: history.slice(-10) }),
+    body: JSON.stringify({ text, speaker, history: history.slice(-10), partial }),
   }));
 }
 

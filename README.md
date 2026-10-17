@@ -20,7 +20,7 @@ A live coaching tool for brand new sales reps. It listens to a sales call, works
 
 - **Voice:** your microphone streams to [Deepgram](https://deepgram.com), which transcribes the call and labels the two voices (the first voice heard is the Rep).
 - **Matching:** a keyword check shows a card instantly. [Claude](https://www.anthropic.com) then confirms who is speaking, picks the best card, and rewrites it using what the customer actually said and the plan sheet.
-- **Cards:** 36 cards covering objections (not interested, too expensive, competitor is cheaper, and more), customer questions (price, discount, contract, and more), a catch-all for any other question, and a red hard-stop card for "don't call me again".
+- **Cards:** 39 cards covering objections (not interested, too expensive, competitor is cheaper, and more), customer questions (price, discount, contract, and more), a catch-all for any other question, three "keep it going" cards (they shared something, they're interested, not sure what they mean), and a red hard-stop card for "don't call me again". **Every finished customer line gets a card.** The rep is never left without help: a line that is just an answer, small talk or "okay" gets a keep-it-going card, and if Claude is slow or fails a neutral card is shown.
 - **Chat view:** the conversation is on the left and the latest card is on the right.
 
 ## What you need
@@ -143,6 +143,7 @@ More API routes added by the merge: `GET /api/cards` (the cards as JSON), `POST 
 
 ## Good to know
 
+- **Safety check on every card.** Before a card is shown, the server checks every number on it. A number over 12 must come from the customer's words, the plan sheet or the plans database, or be plain arithmetic on those (a sum, a difference, a per-line multiple). Cards that use an invented price or discount, or that promise something ("guaranteed", "cheapest", "you'll save", "it only takes a minute"), are replaced by the card's built-in safe wording, and a warning is written to the server log (`card rejected ...`). This catches made-up figures; it cannot catch every bad idea, so keep the plan sheet and plans database accurate.
 - **Which Claude model writes the cards.** Default is `claude-sonnet-5-5` (about 1.4 seconds per card, and it follows the card-writing rules well). For the fastest and cheapest option set `CLAUDE_MODEL=claude-haiku-5-5` in `.env`; it is quicker but sometimes volunteers a competitor's lower price or states things the plan sheet does not say.
 - **Keys stay local.** `.env` is ignored by git. Never commit it.
 - **Deepgram key reaches the browser.** For a local demo, `server.js` hands the Deepgram key to the page on `localhost`. Do not deploy this publicly as-is. Move the Deepgram connection to the server first.

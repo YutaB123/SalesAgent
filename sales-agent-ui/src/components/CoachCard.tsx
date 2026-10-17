@@ -13,7 +13,7 @@ export function CoachCard({ shown }: { shown: ShownCard }) {
   const { card, content } = shown;
   const question = card.kind === "question";
   return (
-    <section className={`coach-card${card.stop ? " stop" : question ? " question" : ""}`} aria-live="polite">
+    <section className={`coach-card${card.stop ? " stop" : question ? " question" : card.kind === "keepgoing" ? " keepgoing" : ""}`} aria-live="polite">
       <div className="coach-tag">
         {card.stop ? "STOP · " : question ? "Customer asked · " : ""}{card.title}
         {shown.tailored && <span className="coach-tailored">fitted to this call</span>}
