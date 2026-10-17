@@ -107,6 +107,16 @@ For one line at a time during a live call, use `POST /api/match` with `{ "text",
 
 The cards live in `cards.js`. To change wording or add a card, edit that file and restart the server. No other code changes.
 
+## Plans database: how the agent compares with other carriers
+
+The agent checks what the customer said against a table of plans (ours and other carriers') and writes the card from those facts, for example "their $120 is for the first 12 months, then it's $165". It never states a competitor fact that is not in the table; for anything missing it says it will confirm in writing.
+
+- **Tables:** `carriers` and `carrier_plans`. Each plan has price (per line or a bundle), intro price and length, data policy, what's included, price lock, contract, whether taxes and fees are included, a promotion, a source, and a **`verified_on` date**. Rows older than 30 days are flagged on the card as "as of <date>". A blank (`null`) means "not known", and the card then says it will confirm.
+- **Where it reads from:** Supabase, using the read-only publishable key, when `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are set (the `VITE_SUPABASE_*` names from `.env.example` also work). Otherwise it uses `data/plans.demo.json`, which holds the same rows, so it always works. `GET /api/status` shows `plans.source` (`supabase` or `local file`) and `GET /api/plans` lists the rows.
+- **Set it up once in Supabase:** open the project's SQL Editor and run `supabase/migrations/20261018000000_carrier_plans.sql` (or `supabase db push`). It creates the tables, makes them read-only for the publishable key, and loads the demo rows.
+- **Change the data:** edit `data/plans.demo.json`, run `node scripts/make-plans-sql.js`, then run the regenerated SQL in Supabase. Or edit rows directly in the Supabase table editor. Keep `verified_on` honest.
+- **All of it is fictional demo data:** the carrier names (Northstar Wireless, Blue Ridge Mobile, Summit Cellular, PennyTalk) and every price are made up. Before using this with real customers, replace them with verified, sourced data. If a customer names a carrier that is not in the table, the card does not guess.
+
 ## Status and known gaps
 
 | Area | State |
@@ -116,6 +126,7 @@ The cards live in `cards.js`. To change wording or add a card, edit that file an
 | Post-call report in **Call summary** | Tested. Claude writes it; Eva's validator rejects any report whose quotes do not match the call, and the bridge retries once |
 | Phone calling (Photon / LiveKit) | Wired into the UI and the audio goes through the same transcriber, **but not tested here**: it needs real Photon and LiveKit credentials and a manual smoke test |
 | Database (Supabase) | **Not connected to the app.** Customers and call history are saved in the browser (`localStorage`) by Jin's `customerRepository`. Writing calls to Supabase needs a server-side secret key and the adapter described in `supabase/CALL_ANALYSIS_MAPPING.md`. |
+| Comparing with other carriers | Tested with the model on a local copy of the data. **The Supabase tables have not been created or read yet** (needs the SQL run in the project and `SUPABASE_URL` + key in `.env`); until then it uses the identical local file |
 | Customer and product data | Fictional demo data |
 
 More API routes added by the merge: `GET /api/cards` (the cards as JSON), `POST /api/post-call` (the report; body `{ "lines": [{ "speaker": "rep" | "customer", "text": "..." }] }`).

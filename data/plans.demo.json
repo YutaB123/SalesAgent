@@ -1,0 +1,68 @@
+{
+  "_comment": "FICTIONAL demo data for the hackathon. Carrier names and prices are made up. This file is the offline copy of the Supabase tables carriers and carrier_plans (supabase/migrations/20261018000000_carrier_plans.sql is generated from it by scripts/make-plans-sql.js). Edit here, regenerate the SQL, and re-run it in Supabase. null means 'not known', and the agent must then say it will confirm.",
+  "carriers": [
+    { "id": "tmobile-us", "name": "T-Mobile (us)", "aliases": ["t-mobile", "tmobile", "pink plus"], "is_us": true,  "is_demo": true },
+    { "id": "northstar",  "name": "Northstar Wireless", "aliases": ["northstar"], "is_us": false, "is_demo": true },
+    { "id": "blueridge",  "name": "Blue Ridge Mobile", "aliases": ["blue ridge", "blueridge"], "is_us": false, "is_demo": true },
+    { "id": "summit",     "name": "Summit Cellular", "aliases": ["summit"], "is_us": false, "is_demo": true },
+    { "id": "pennytalk",  "name": "PennyTalk", "aliases": ["pennytalk", "penny talk"], "is_us": false, "is_demo": true }
+  ],
+  "plans": [
+    {
+      "id": "pink-plus", "carrier_id": "tmobile-us", "name": "Pink Plus",
+      "price_per_line": 65.00, "bundle_lines": null, "bundle_price": null, "regular_price_per_line": null, "promo_months": null,
+      "data_policy": "Unlimited data",
+      "includes": ["Free streaming add-on", "Switch on one call: no store visit, no new SIM"],
+      "price_lock_years": 5, "contract_months": null, "taxes_fees_included": null, "hotspot_note": null,
+      "promo_note": "Switch this month: $150 bill credit, plus up to $300 of the remaining phone balance paid off as bill credit",
+      "promo_ends": "2026-10-31",
+      "source_url": "internal plan sheet (demo)", "verified_on": "2026-10-17", "active": true, "is_demo": true
+    },
+    {
+      "id": "northstar-core", "carrier_id": "northstar", "name": "Core Unlimited",
+      "price_per_line": 55.00, "bundle_lines": null, "bundle_price": null, "regular_price_per_line": null, "promo_months": null,
+      "data_policy": "Unlimited data, slowed after 100 GB a month",
+      "includes": ["10 GB mobile hotspot"],
+      "price_lock_years": null, "contract_months": null, "taxes_fees_included": false, "hotspot_note": "10 GB a month",
+      "promo_note": null, "promo_ends": null,
+      "source_url": "demo data", "verified_on": "2026-10-05", "active": true, "is_demo": true
+    },
+    {
+      "id": "northstar-family", "carrier_id": "northstar", "name": "Family Bundle (3 lines)",
+      "price_per_line": null, "bundle_lines": 3, "bundle_price": 120.00, "regular_price_per_line": 55.00, "promo_months": 12,
+      "data_policy": "Unlimited data, slowed after 50 GB a month",
+      "includes": [],
+      "price_lock_years": 1, "contract_months": null, "taxes_fees_included": false, "hotspot_note": null,
+      "promo_note": "$120 total for 3 lines for the first 12 months, then $55 per line",
+      "promo_ends": null,
+      "source_url": "demo data", "verified_on": "2026-10-05", "active": true, "is_demo": true
+    },
+    {
+      "id": "blueridge-saver", "carrier_id": "blueridge", "name": "Blue Saver",
+      "price_per_line": 45.00, "bundle_lines": null, "bundle_price": null, "regular_price_per_line": null, "promo_months": null,
+      "data_policy": "15 GB a month, then reduced speed",
+      "includes": [],
+      "price_lock_years": null, "contract_months": null, "taxes_fees_included": true, "hotspot_note": null,
+      "promo_note": null, "promo_ends": null,
+      "source_url": "demo data", "verified_on": "2026-09-02", "active": true, "is_demo": true
+    },
+    {
+      "id": "summit-max", "carrier_id": "summit", "name": "Summit Max",
+      "price_per_line": 75.00, "bundle_lines": null, "bundle_price": null, "regular_price_per_line": null, "promo_months": null,
+      "data_policy": "Unlimited premium data",
+      "includes": ["Streaming bundle", "International texting"],
+      "price_lock_years": 3, "contract_months": null, "taxes_fees_included": false, "hotspot_note": null,
+      "promo_note": null, "promo_ends": null,
+      "source_url": "demo data", "verified_on": "2026-10-10", "active": true, "is_demo": true
+    },
+    {
+      "id": "pennytalk-basic", "carrier_id": "pennytalk", "name": "Basic 5GB",
+      "price_per_line": 30.00, "bundle_lines": null, "bundle_price": null, "regular_price_per_line": null, "promo_months": null,
+      "data_policy": "5 GB a month, then very slow speeds",
+      "includes": [],
+      "price_lock_years": null, "contract_months": null, "taxes_fees_included": true, "hotspot_note": null,
+      "promo_note": null, "promo_ends": null,
+      "source_url": "demo data", "verified_on": "2026-10-12", "active": true, "is_demo": true
+    }
+  ]
+}

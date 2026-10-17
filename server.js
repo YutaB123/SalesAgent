@@ -14,6 +14,7 @@ try {
 } catch {}
 
 const { CARDS } = require("./cards.js");
+const plans = require("./plans.js");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
@@ -60,6 +61,13 @@ Style examples (the SHAPE to copy, never the words):
   Customer: "My wife handles all the phone stuff."  ->  agree "Makes sense that she handles it."  points ["I'm happy to walk you both through it", "The $150 credit ends this month, so timing matters"]  ask "Is she free tonight or tomorrow?"
   Customer: "Verizon offered my sister three lines for 120 total."  ->  agree "Three lines for 120, that is worth comparing."  points ["Ours is locked for five years, plus a $150 credit to switch", "Unlimited data and free streaming come with it"]  ask "What does her 120 include with taxes and fees?"
 
+COMPARING WITH OTHER CARRIERS. When the message contains "PLANS DATABASE FACTS", they are the ONLY source for anything about another carrier or plan:
+- Never state a competitor price, perk, limit or term that is not in the facts. If the customer names a carrier or plan that is not listed, or a field says "unknown", say you will confirm it. Never invent one.
+- Compare honestly, using the numbers for the customer's number of lines when they are given (the facts include the totals). Lead with where we are genuinely stronger according to the facts: how long our price is locked, what comes with the plan, an intro price that ends, data that slows down, their taxes and fees being extra, and our $150 credit and phone payoff.
+- If their price is lower today, never hide that and never run the other carrier down. Acknowledge their number, bring in the specific facts that change the comparison (for example "their $120 is for the first 12 months, then it's $165"), and ask for what is still missing (how many lines, are taxes and fees included).
+- If a row says OLD, say "as of <date>" and offer to re-check it. Never claim another carrier's coverage, service quality or reliability is worse: the database has no such facts.
+- Our own unknown fields (taxes and fees, hotspot terms, what happens after our price lock) stay "I'll confirm in writing". Do not claim we include them.
+
 Plan sheet:
 ${PLAN_SHEET}
 
@@ -78,6 +86,8 @@ async function match(body) {
   const { text, history = [], speaker: known } = body;
   const cards = body.cards || cardsForClaude();
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
+  // rep lines never get a card, so they never need facts; for customer lines the plans database adds comparison facts when relevant
+  const facts = known === "rep" ? "" : await plans.planFacts(text, history).catch(() => "");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -87,7 +97,7 @@ async function match(body) {
       // no reasoning tokens: keeps replies fast and the JSON short. Haiku and the larger models name this setting differently.
       thinking: { type: /haiku/i.test(MODEL) ? "disabled" : "between_tools" },
       system: systemPrompt(cards),
-      messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
+      messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${facts ? `\n\n${facts}` : ""}${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
     }),
   });
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${await r.text()}`);
@@ -200,9 +210,15 @@ http.createServer(async (req, res) => {
     }
     return;
   }
+  // The plans the agent compares against (and which source they came from).
+  if (req.method === "GET" && req.url === "/api/plans") {
+    const { rows, source, error } = await plans.getPlans();
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ source, error, plans: rows }));
+  }
   if (req.method === "GET" && req.url === "/api/status") {
     res.writeHead(200, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY }));
+    return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY, plans: await plans.status() }));
   }
   // Local demo only: hands the Deepgram key to the page on localhost so the browser can stream audio directly.
   if (req.method === "GET" && req.url === "/api/dg-key") {
