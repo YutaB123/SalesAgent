@@ -164,7 +164,7 @@ export class LiveCoach {
           this.show(card, content ?? contentOf(card), !!content);
         }
       })
-      .catch(() => { /* the keyword card (if any) is enough */ })
+      .catch(() => { this.hooks.onError("Coaching request failed. Showing guidance while you retry the next customer statement."); })
       .finally(() => { utt.busy = false; });
   }
 
@@ -190,6 +190,11 @@ export class LiveCoach {
     const utt = given ?? freshUtterance();   // a typed line has no spoken sentence behind it
     this.claim(utt);
     const local = matchKeywords(this.cards, text);
+    // Show useful guidance immediately, even during introductions (the "discovery" opening card).
+    if (!this.shown && !local && utt.id === this.latest) {
+      const opening = this.cards.find((c) => c.id === "discovery");
+      if (opening) this.show(opening, contentOf(opening), false);
+    }
     if (local && this.shown?.card.id !== local.id && utt.id === this.latest) this.show(local, contentOf(local), false);
     if (local?.stop) { this.history.push("Customer: " + text); return; }   // a hard no never waits on the network
 
@@ -198,7 +203,7 @@ export class LiveCoach {
       try {
         // Claude may already have answered while they were still talking: reuse it if the line barely grew.
         out = utt?.out && wordCount(text) <= utt.outWords + 2 ? utt.out : await askCoach(text, role, this.history);
-      } catch { out = null; }
+      } catch { out = null; this.hooks.onError("Coaching request failed. Showing guidance; send the customer statement again to retry."); }
     }
     this.history.push("Customer: " + text);
     if (utt.id !== this.latest) return;   // a newer sentence has started: do not replace its card with this older answer

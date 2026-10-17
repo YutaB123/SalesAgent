@@ -22,7 +22,7 @@ export async function fetchCards(): Promise<Card[]> {
 export async function askCoach(text: string, speaker: CoachRole | undefined, history: string[], partial = false): Promise<CoachResult> {
   // partial = the customer is still mid-sentence: the server may answer "no card yet". A finished line always gets a card.
   return json<CoachResult>(await fetch("/api/match", {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(30000),
     body: JSON.stringify({ text, speaker, history: history.slice(-10), partial }),
   }));
 }

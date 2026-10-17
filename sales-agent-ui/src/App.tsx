@@ -1,3 +1,4 @@
+import { PlanDatabasePanel } from "./components/PlanDatabasePanel";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, MessageSquareText, Plus, Send, Sparkles } from "lucide-react";
 import { AppHeader } from "./components/AppHeader";
@@ -17,6 +18,7 @@ import { createCustomerId, customerRepository } from "./services/customerReposit
 import type { ConversationTurn, FollowUpTask, ListeningStatus, NavKey, TrackedCustomer } from "./types/salesAgent";
 
 const pageMeta: Record<NavKey,{title:string;subtitle:string}> = {
+  "plan-database":{title:"Plan Database",subtitle:"Official carrier plans and pricing conditions"},
   home:{title:"Home",subtitle:"Start a call or check on your customers"},
   "new-conversation":{title:"New Conversation",subtitle:"Listen to a call and get a card for each objection or question"},
   suggestions:{title:"AI Suggestions",subtitle:"Review response ideas, communication strategy, and facts to verify."},
@@ -67,7 +69,7 @@ function App(){
   const savedToRef=useRef("");
   const endingRef=useRef(false);
   const endCallLatest=useRef<()=>void>(()=>{});
-  useEffect(()=>{void fetchStatus().then(setStatus);fetchCards().then(setCards).catch(()=>undefined);},[]);
+  useEffect(()=>{void fetchStatus().then(setStatus);fetchCards().then(setCards).catch(()=>setListeningError("Coaching cards could not load. Refresh the page to reconnect."));},[]);
   /** True when the server has Deepgram + the cards: the app listens to a real microphone. Otherwise it stays in demo mode. */
   const liveEnabled=status.deepgram&&cards.length>0;
   const ensureCoach=():LiveCoach=>{
@@ -83,7 +85,7 @@ function App(){
   const startCall=(customerId?:string)=>{coachRef.current?.stop();coachRef.current=null;endingRef.current=false;setCoachCard(null);setLive(null);setReport(null);reportRef.current=null;savedToRef.current="";setReportState("idle");setReportError("");setTurns([]);setDraft("");setListeningStatus("ready");setListeningError("");setCallId(createCustomerId());setCallSaved(false);setPendingCustomerLink(false);setCallSaveError("");setLinkCustomerChoice("");setSessionCustomerId(customerId??"");navigate("new-conversation");};
   const startListening=async()=>{setListeningError("");
     if(liveEnabled){setListeningStatus("listening");try{await ensureCoach().startMic();navigate("ongoing");setNotice("Listening on your microphone. Put the call on speaker.");}catch(error){coachRef.current?.stop();coachRef.current=null;setListeningStatus("error");setListeningError(error instanceof Error?error.message:"Could not start the microphone.");}return;}
-    setListeningStatus("listening");try{if(!turns.length)await mockRealtimeSource.start(turn=>setTurns(t=>[...t,turn]));navigate("ongoing");setNotice("Mock transcript loaded. No audio is being recorded.");}catch{setListeningStatus("error");setListeningError("The demo transcript could not be loaded. Please try again.");}};
+    setListeningStatus("listening");try{if(!turns.length)await mockRealtimeSource.start(turn=>{if(cards.length)ensureCoach().typed(turn.speaker==="seller"?"rep":"customer",turn.text);else setTurns(t=>[...t,turn]);});navigate("ongoing");setNotice("Mock transcript loaded. No audio is being recorded.");}catch{setListeningStatus("error");setListeningError("The demo transcript could not be loaded. Please try again.");}};
   const stopListening=async()=>{try{coachRef.current?.stop();coachRef.current=null;await mockRealtimeSource.stop();setListeningStatus("ready");setNotice("Demo session stopped.");}catch{setListeningStatus("error");setListeningError("The session could not be stopped cleanly.");}};
   /** A customer line typed by hand: goes through the same coach as a spoken line when the server has the cards. */
   const addCustomerLine=(text:string)=>{if(cards.length){ensureCoach().typed("customer",text);}else{setTurns(t=>[...t,{id:`turn-${Date.now()}`,speaker:"customer",text,time:now(),source:"mock"}]);}};
@@ -131,6 +133,7 @@ function App(){
       <div className="bottom-actions"><button className="secondary-button" onClick={()=>startCall(sessionCustomerId)}><Plus size={16}/>Start New Conversation</button><button className="primary-button" onClick={()=>navigate("customer-tracking")}>View Customer Record <ArrowRight size={15}/></button></div></>}
     {page==="customer-tracking"&&<CustomerTrackingWorkspace onStartConversation={startCall}/> }
     {page==="history"&&<><PageHeading title="Conversation history" description="Calls saved to your customer profiles."/><Panel title="Recent conversations" subtitle="Saved customer activity">{recentHistory.length?<div className="history-table"><div className="history-head"><span>Customer</span><span>Date</span><span>Summary / product</span><span>Concerns</span></div>{recentHistory.map(({customer:item,call})=><div className="history-row" key={call.id}><strong>{item.name}</strong><span>{new Date(call.date).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</span><span>{call.summary||call.productDiscussed||"Transcript saved"}</span><span>{call.concerns.join(", ")||"—"}</span></div>)}</div>:<div className="dashboard-empty"><span className="dashboard-empty-icon"><MessageSquareText size={19}/></span><div><strong>No saved conversations yet</strong><p>Link a completed conversation to a customer to keep it here.</p></div><button className="dashboard-text-link" onClick={()=>startCall()}>Start a conversation <ArrowRight size={14}/></button></div>}</Panel><button className="primary-button history-cta" onClick={() => startCall()}>Start New Conversation <ArrowRight size={16}/></button></>}
+    {page==="plan-database"&&<PlanDatabasePanel/>}
     {notice&&<div className="toast"><CheckCircle2 size={16}/>{notice}</div>}
   </main></div></div>;
 }

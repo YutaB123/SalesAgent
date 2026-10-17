@@ -13,3 +13,6 @@ __pycache__/
 
 # React UI build
 sales-agent-ui/dist/
+
+# Local plan database and SQLite journal files
+database/*.sqlite*

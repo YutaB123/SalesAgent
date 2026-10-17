@@ -1,7 +1,8 @@
-import { Clock3, Home, MessageSquarePlus, UsersRound } from "lucide-react";
+import { Clock3, Database, Home, MessageSquarePlus, UsersRound } from "lucide-react";
 import type { NavKey } from "../types/salesAgent";
 import { AssistantMascot } from "./AssistantMascot";
 const items: { key: NavKey; label: string; icon: typeof Home }[] = [
+  { key: "plan-database", label: "Plan Database", icon: Database },
   { key: "home", label: "Home", icon: Home }, { key: "new-conversation", label: "New Conversation", icon: MessageSquarePlus },
   { key: "customer-tracking", label: "Customer Tracking", icon: UsersRound }, { key: "history", label: "History", icon: Clock3 },
 ];
