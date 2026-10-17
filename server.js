@@ -139,6 +139,7 @@ function runAnalysis(payload) {
 }
 
 http.createServer(async (req, res) => {
+  if (await require("./knowledge/api.js").handle(req, res)) return;
   if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
   // The original single-page live coach, kept as a fallback at /classic.
   if (req.method === "GET" && req.url === "/classic") {

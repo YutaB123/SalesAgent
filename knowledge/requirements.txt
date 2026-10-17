@@ -1,0 +1,2 @@
+# Only needed for Supabase/PostgreSQL; local SQLite uses Python standard library.
+psycopg[binary]>=3.2,<4
