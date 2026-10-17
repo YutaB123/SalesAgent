@@ -1,10 +1,15 @@
 .env
+.env.*
+!.env.example
 *.log
 node_modules/
 .tmp*
 
+# Python
 .venv/
 __pycache__/
-*.pyc
-.env.*
-!.env.example
+*.py[cod]
+.pytest_cache/
+
+# React UI build
+sales-agent-ui/dist/
