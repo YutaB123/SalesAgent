@@ -1,6 +1,5 @@
-import { ArrowRight, CalendarDays, Clock3, Package, PhoneCall, Plus, UserRound } from "lucide-react";
-import type { FollowUpTask, ProductInfo, TrackedCustomer } from "../types/salesAgent";
-import { AssistantMascot } from "./AssistantMascot";
+import { ArrowRight, CalendarDays, Clock3, PhoneCall } from "lucide-react";
+import type { FollowUpTask, TrackedCustomer } from "../types/salesAgent";
 
 type HomeTask = FollowUpTask & { customer: TrackedCustomer };
 type HomeCall = { customer: TrackedCustomer; date: string; summary: string; product: string; id: string };
@@ -39,65 +38,24 @@ function formatDate(value: string) {
   return Number.isFinite(date.getTime()) ? date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : value;
 }
 
-export function DashboardHome({
-  customers, products, selectedCustomerId, selectedProductId,
-  onSelectCustomer, onSelectProduct, onStart, onNavigate, onAddProduct,
-}: {
+export function DashboardHome({ customers, onStart, onNavigate }: {
   customers: TrackedCustomer[];
-  products: ProductInfo[];
-  selectedCustomerId: string;
-  selectedProductId: string;
-  onSelectCustomer: (id: string) => void;
-  onSelectProduct: (id: string) => void;
-  onStart: (productId: string) => void;
+  onStart: () => void;
   onNavigate: (page: "customer-tracking" | "history" | "new-conversation") => void;
-  onAddProduct: () => void;
 }) {
-  const selectedCustomer = customers.find((customer) => customer.id === selectedCustomerId);
-  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0];
   const tasks = readSavedTasks(customers);
   const calls = readRecentCalls(customers);
 
   return <div className="dashboard-home">
     <section className="dashboard-hero">
       <div className="dashboard-hero-copy">
-        <span className="dashboard-greeting">SALES CONVERSATION WORKSPACE</span>
-        <h1>Ready for your next conversation?</h1>
-        <p>Choose a customer and product, then open your sales workspace.</p>
-        <button className="primary-button" onClick={() => selectedProduct && onStart(selectedProduct.id)} disabled={!selectedProduct}>
+        <h1>Ready for your next call?</h1>
+        <p>Start a conversation and the coach listens and tells you what to say.</p>
+        <button className="primary-button" onClick={onStart}>
           Start a Conversation <ArrowRight size={16}/>
         </button>
       </div>
-      <div className="dashboard-hero-mascot" aria-hidden="true"><AssistantMascot/></div>
     </section>
-
-    <section className="dashboard-setup" aria-labelledby="setup-title">
-      <div className="dashboard-section-heading"><div><span className="dashboard-step">01</span><div><h2 id="setup-title">Set up your conversation</h2><p>Pick the context you want ready when the conversation opens.</p></div></div></div>
-      <div className="dashboard-setup-grid">
-        <div className="dashboard-setup-card">
-          <div className="dashboard-setup-label"><span className="dashboard-icon"><UserRound size={17}/></span><strong>Customer</strong></div>
-          {customers.length ? <>
-            <select aria-label="Choose a customer" value={selectedCustomerId} onChange={(event) => onSelectCustomer(event.target.value)}>
-              {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.company ? ` · ${customer.company}` : ""}</option>)}
-            </select>
-            <div className="dashboard-preview">{selectedCustomer ? <><span className="dashboard-avatar">{selectedCustomer.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("")}</span><span><strong>{selectedCustomer.name}</strong><small>{selectedCustomer.role || selectedCustomer.company || "Customer profile"}</small></span></> : <span className="dashboard-muted">Select a customer to preview</span>}</div>
-            <button className="dashboard-text-link" onClick={() => onNavigate("customer-tracking")}>View customer details <ArrowRight size={14}/></button>
-          </> : <div className="dashboard-empty-inline"><span>No customer profiles yet.</span><button className="dashboard-text-link" onClick={() => onNavigate("customer-tracking")}>Add a customer <Plus size={14}/></button></div>}
-        </div>
-        <div className="dashboard-setup-card">
-          <div className="dashboard-setup-label"><span className="dashboard-icon"><Package size={17}/></span><strong>Product</strong><button className="dashboard-add-link" onClick={onAddProduct}><Plus size={13}/> Add product</button></div>
-          {products.length ? <>
-            <select aria-label="Choose a product" value={selectedProduct?.id ?? ""} onChange={(event) => onSelectProduct(event.target.value)}>
-              {products.map((product) => <option key={product.id} value={product.id}>{product.name}{product.price ? ` · ${product.price}` : ""}</option>)}
-            </select>
-            <div className="dashboard-preview"><span className="dashboard-icon dashboard-product-icon"><Package size={17}/></span><span><strong>{selectedProduct?.name}</strong><small>{selectedProduct?.category || "Product information"}</small></span><b>{selectedProduct?.price}</b></div>
-            <button className="dashboard-text-link" onClick={() => onNavigate("new-conversation")}>View product details <ArrowRight size={14}/></button>
-          </> : <div className="dashboard-empty-inline"><span>No products available yet.</span><button className="dashboard-text-link" onClick={onAddProduct}>Add a product <Plus size={14}/></button></div>}
-        </div>
-      </div>
-      {(!selectedCustomer || !selectedProduct) && <p className="dashboard-setup-hint">Select both a customer and product to start a conversation.</p>}
-    </section>
-
     <div className="dashboard-lower-grid">
       <section className="dashboard-list-card" aria-labelledby="followups-title">
         <div className="dashboard-list-heading"><div><span className="dashboard-icon"><CalendarDays size={17}/></span><div><h2 id="followups-title">Your follow-ups</h2><p>Open actions saved to customer profiles.</p></div></div><button className="dashboard-view-all" onClick={() => onNavigate("customer-tracking")}>View all <ArrowRight size={14}/></button></div>

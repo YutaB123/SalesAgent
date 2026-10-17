@@ -18,7 +18,6 @@ export function CallControls({status,error,live=false,onStart,onStop}:{status:Li
     :(status==="listening"?"Mock transcript is active. No audio is being recorded.":"Ready to start the mock transcript demo. No audio is being recorded."));
   return <section className={`call-controls session-status-banner status-${status}`} aria-live="polite">
     <div className="session-status-copy"><span className="session-status-label"><i/>{label}</span><span className="session-status-detail">{detail}</span></div>
-    <div className="session-mascot"><span>Here to help!</span><AssistantMascot/></div>
     {status==="listening"?<button className="secondary-button" onClick={onStop}><Square size={14}/>Stop Listening</button>:<button className="primary-button" onClick={onStart}><Mic size={15}/>{status==="error"?(live?"Try again":"Retry Demo"):"Start Listening"}</button>}
   </section>;
 }
