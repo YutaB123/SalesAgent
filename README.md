@@ -1,5 +1,7 @@
 # SalesAgent: Rejection Coach
 
+The separate React dashboard prototype is in [`sales-agent-ui/`](sales-agent-ui/README.md). It has its own Vite setup and can be run from that directory; the existing Rejection Coach app and server remain at the repository root.
+
 A live coaching tool for brand new sales reps. It listens to a sales call, works out who is talking (rep or customer), and when the customer pushes back or asks a question it shows a short three-step card on screen: what to **say**, what to **explain**, and what to **ask**.
 
 > **Hackathon demo.** The plan ("Pink Plus"), prices and promotion in this project are **fictional**. Nothing here is real T-Mobile information.
