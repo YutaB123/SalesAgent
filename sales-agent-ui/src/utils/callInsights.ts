@@ -71,13 +71,16 @@ export function applyReportToCustomer(customerId: string, callId: string, report
   const purchaseStage = stageFromReport(report);
   const readiness = readinessFromReport(report);
   const dates = report.follow_up_actions.map((a) => resolveFollowUpDate(a.time_text, callDate)).filter((d): d is string => Boolean(d)).sort();
-  const followUpDate = dates[0];
+  const blocked = customerRepository.list().find(c => c.id === customerId)?.doNotContact || report.purchase_stage?.label === "Not considering";
+  const suggested = new Date(callDate); suggested.setDate(suggested.getDate() + (report.purchase_stage?.label === "Ready to buy" ? 1 : 3));
+  const followUpDate = blocked ? undefined : dates[0] || dateKey(suggested);
+  const followUpRecommendation = followUpDate ? {date:followUpDate, basis:dates.length ? "agreed" as const : "suggested" as const, reason:dates.length ? "Based on the follow-up timing recorded in this call." : "Suggested next business conversation: review the open needs while the discussion is recent. No appointment was agreed."} : undefined;
   const needs = report.customer_needs.map((n) => n.text).slice(0, 3).join("; ");
 
   customerRepository.patch(customerId, {
     ...(purchaseStage ? { purchaseStage } : {}),
     ...(readiness !== undefined ? { readiness } : {}),
-    ...(followUpDate ? { followUpDate } : {}),
+    ...(followUpDate ? { followUpDate, followUpRecommendation } : {}),
     ...(needs ? { needs } : {}),
   });
 

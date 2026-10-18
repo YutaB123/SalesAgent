@@ -24,13 +24,15 @@ class Conflict(ValueError):
 def validate(record):
     if not isinstance(record, dict):
         raise ValueError('Plan must be an object')
-    if record.get('carrier') not in ('T-Mobile', 'AT&T', 'Verizon'):
-        raise ValueError('Unknown carrier')
+    if not isinstance(record.get('carrier'), str) or not record['carrier'].strip() or len(record['carrier']) > 100:
+        raise ValueError('Invalid supplier name')
     for key in ('id', 'name', 'sourceUrl', 'sourceSection', 'verifiedOn'):
         if not isinstance(record.get(key), str) or not record[key].strip() or len(record[key]) > 500:
             raise ValueError('Missing or invalid ' + key)
     host = urlsplit(record['sourceUrl']).hostname or ''
-    domain = {'T-Mobile': 't-mobile.com', 'AT&T': 'att.com', 'Verizon': 'verizon.com'}[record['carrier']]
+    domain = {'T-Mobile': 't-mobile.com', 'AT&T': 'att.com', 'Verizon': 'verizon.com', 'Mint Mobile':'mintmobile.com', 'Visible':'visible.com', 'Google Fi':'fi.google.com', 'Cricket Wireless':'cricketwireless.com'}.get(record['carrier'], record.get('sourceDomain'))
+    if not isinstance(domain, str) or not domain or '/' in domain or ':' in domain:
+        raise ValueError('A supplier needs its official source domain')
     if not record['sourceUrl'].startswith('https://') or not (host == domain or host.endswith('.' + domain)):
         raise ValueError('Source must be an official HTTPS page for this carrier')
     try:
@@ -143,6 +145,41 @@ def main():
     store = Store()
     if not store.pg and not store.path.exists():
         store.initialize()
+    if command.startswith('customer-'):
+        from customer_memory import initialize, list_records, upsert
+        if command == 'customer-init':
+            return initialize(store)
+        data = json.load(sys.stdin)
+        if command == 'customer-list':
+            return list_records(store, data.get('phone'), data.get('customerId'))
+        if command == 'customer-save':
+            return upsert(store, data.get('record'))
+        raise ValueError('Unknown customer operation')
+    if command == 'import-provider':
+        plans = json.load(sys.stdin).get('plans')
+        if not isinstance(plans, list) or not 1 <= len(plans) <= 40:
+            raise ValueError('Invalid refreshed plan batch')
+        for plan in plans:
+            validate(plan)
+        if len({p['id'] for p in plans}) != len(plans):
+            raise ValueError('Duplicate plan IDs in refresh')
+        q = store.placeholder
+        cast = '::jsonb' if store.pg else ''
+        now = datetime.now(timezone.utc).isoformat()
+        with store.connection() as conn:
+            if not store.pg:
+                conn.execute('BEGIN IMMEDIATE')
+            for plan in plans:
+                payload = json.dumps(plan)
+                conn.execute('INSERT INTO carrier_plan_catalog(id,record) VALUES (' + q + ',' + q + cast + ') ON CONFLICT(id) DO NOTHING', (plan['id'], payload))
+                row = conn.execute('SELECT record,revision FROM carrier_plan_catalog WHERE id=' + q + (' FOR UPDATE' if store.pg else ''), (plan['id'],)).fetchone()
+                previous = row['record'] if isinstance(row['record'], dict) else json.loads(row['record'])
+                if previous['carrier'] != plan['carrier']:
+                    raise ValueError('Cannot change a plan supplier')
+                revision = row['revision'] + 1
+                conn.execute('UPDATE carrier_plan_catalog SET record=' + q + cast + ',revision=' + q + ',updated_at=' + q + ' WHERE id=' + q, (payload,revision,now,plan['id']))
+                conn.execute('INSERT INTO carrier_plan_updates(id,plan_id,revision,previous_record,record,updated_at) VALUES (' + ','.join([q,q,q,q+cast,q+cast,q]) + ')', (uuid.uuid4().hex,plan['id'],revision,json.dumps(previous),payload,now))
+        return {'updated':len(plans),'storage':'supabase' if store.pg else 'sqlite'}
     if command == 'init':
         return store.initialize()
     if command == 'import-snapshot':

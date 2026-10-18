@@ -54,13 +54,14 @@ function hasRecentActivity(customer: TrackedCustomer) {
   const newest = new Date(customer.callHistory[0].date).getTime();
   return Number.isFinite(newest) && Date.now() - newest <= 7 * 24 * 60 * 60 * 1000;
 }
-function tasksFor(customer: TrackedCustomer, tasksByCustomer: Record<string, FollowUpTask[]>) {
+function tasksFor(customer: TrackedCustomer, tasksByCustomer: Record<string, FollowUpTask[]>): FollowUpTask[] {
   const saved = tasksByCustomer[customer.id];
-  return Array.isArray(saved) ? saved : (customer.isSample ? initialFollowUps : []);
+  return Array.isArray(saved) ? saved : (customer.isSample ? initialFollowUps : customer.callHistory.slice(0,1).flatMap(call=>call.nextSteps.map((title,i)=>({id:call.id+"-next-"+i,title,owner:"Sales Team",due:customer.followUpRecommendation?.date||customer.followUpDate||"To confirm"}))));
 }
 
 export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConversation: (customerId?: string) => void }) {
   const [customers, setCustomers] = useState<TrackedCustomer[]>(() => customerRepository.list());
+  useEffect(()=>{const update=()=>setCustomers(customerRepository.list());window.addEventListener("customers-updated",update);return()=>window.removeEventListener("customers-updated",update);},[]);
   const [selectedId, setSelectedId] = useState(() => customerRepository.list()[0]?.id ?? "");
   const [tasksByCustomer, setTasksByCustomer] = useState<Record<string, FollowUpTask[]>>(loadTasks);
   const [scores, setScores] = useState<Record<string, number>>(loadScores);
@@ -106,21 +107,22 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
     setCustomerError(""); setCustomerForm("edit");
   };
   const saveCustomer = () => {
-    if (!customerDraft.name.trim()) { setCustomerError("Enter the customer's name to continue."); return; }
+    if (!customerDraft.name.trim() && !customerDraft.contact.trim()) { setCustomerError("Enter a phone number or contact information; a name is optional."); return; }
     if (customerDraft.followUpDate && Number.isNaN(Date.parse(customerDraft.followUpDate))) { setCustomerError("Choose a valid follow-up date."); return; }
     const existing = customers.find((item) => item.id === customerDraft.id);
     const normalized = (value: string) => value.trim().toLocaleLowerCase();
     const duplicate = customers.find((item) => item.id !== customerDraft.id && normalized(item.name) === normalized(customerDraft.name) && normalized(item.company) === normalized(customerDraft.company));
     if (duplicate) { setCustomerError(`${duplicate.name} at ${duplicate.company || "this company"} is already tracked. Select that profile to avoid a duplicate.`); return; }
     const nextCustomer: TrackedCustomer = {
+      ...existing,
       ...customerDraft,
       id: customerDraft.id || createCustomerId(),
-      name: customerDraft.name.trim(), company: customerDraft.company.trim(), role: customerDraft.role.trim(), contact: customerDraft.contact.trim(),
+      name: customerDraft.name.trim() || customerDraft.contact.trim(), company: customerDraft.company.trim(), role: customerDraft.role.trim(), contact: customerDraft.contact.trim(),
       needs: customerDraft.needs.trim(), concerns: customerDraft.concerns.trim(), productDiscussed: customerDraft.productDiscussed.trim(), notes: customerDraft.notes.trim(),
       readiness: existing?.readiness, lastContact: existing?.lastContact ?? "", summary: existing?.summary ?? "No call summary has been saved yet.",
       callHistory: existing?.callHistory ?? [], isSample: false,
     };
-    try { persistCustomer(customerRepository.save(nextCustomer)); setSelectedId(nextCustomer.id); setQuery(""); setFollowUpFilter("all"); setActivityFilter("all"); setCustomerForm(null); }
+    try { const saved=customerRepository.save(nextCustomer);persistCustomer(saved);setSelectedId(saved.find(c=>c.name===nextCustomer.name&&c.company===nextCustomer.company)?.id??nextCustomer.id); setQuery(""); setFollowUpFilter("all"); setActivityFilter("all"); setCustomerForm(null); }
     catch { setCustomerError("The customer could not be saved. Check browser storage and try again."); }
   };
   const removeCustomer = () => {
@@ -143,7 +145,7 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
     <PageHeading title="Customer Tracking" description="Keep each customer's account context, call history, and next steps together." action={<button className="primary-button" onClick={openAddCustomer}><Plus size={15}/> Add Customer</button>}/>
     {storageError && <div className="tracking-error" role="alert">{storageError}</div>}
     <div className="tracking-workspace">
-      <Panel title="Customers" subtitle={`${activeFilters ? `${filteredCustomers.length} of ` : ""}${customers.length} accounts · saved on this device`}>
+      <Panel title="Customers" subtitle={`${activeFilters ? `${filteredCustomers.length} of ` : ""}${customers.length} accounts · team workspace`}>
         <div className="customer-search"><Search size={14}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name or company" aria-label="Search customers"/></div>
         <div className="customer-filters"><label>Follow-up<select value={followUpFilter} onChange={(event) => setFollowUpFilter(event.target.value as "all" | "open" | "none")}><option value="all">All statuses</option><option value="open">Open / scheduled</option><option value="none">No open actions</option></select></label><label>Activity<select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value as "all" | "recent")}><option value="all">Any time</option><option value="recent">Last 7 days</option></select></label></div>
         <div className="tracked-customer-groups">{groupedCustomers.map((group) => <section className="tracked-customer-group" key={group.id}>
@@ -162,12 +164,15 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
         <div className="tracking-buddy"><AssistantMascot/><span><strong>Little things add up!</strong><small>Keep each customer's follow-up personal and on time.</small></span><b>✦</b></div>
       </Panel>
       {selected ? <div className="tracking-detail">
-        <Panel title="Customer overview" subtitle={selected.isSample ? "Sample account · demo information" : "Customer account"} action={<div className="customer-record-actions"><span className="stage-pill">{selected.purchaseStage}</span><button className="followup-icon-button" onClick={openEditCustomer} aria-label="Edit customer" title="Edit customer"><Pencil size={14}/></button><button className="followup-icon-button delete-action" onClick={() => setDeleteConfirm(true)} aria-label="Delete customer" title="Delete customer"><Trash2 size={14}/></button></div>}>
+        <Panel title="Customer overview" subtitle={selected.isSample ? "Sample account · demo information" : "Customer account"} action={<div className="customer-record-actions"><span className="stage-pill">{selected.purchaseStage}</span><button className="followup-icon-button" onClick={openEditCustomer} aria-label="Edit customer" title="Edit customer"><Pencil size={14}/></button><button className="followup-icon-button delete-action" onClick={() => setDeleteConfirm(true)} aria-label="Archive customer" title="Archive customer"><Trash2 size={14}/></button></div>}>
           <div className="tracking-profile"><span className="customer-avatar">{initials(selected.name)}</span><div><h2>{selected.name}</h2><span>{[selected.role, selected.company].filter(Boolean).join(" · ") || "Customer"}</span></div><span className={`intent-pill urgency-${status}`}>Follow-up · {urgencyLabel(status, selected.followUpDate)}</span></div>
           {selected.contact && <div className="customer-contact-line">Contact · {selected.contact}</div>}
           <div className="tracking-facts"><div><small>Last contact</small><strong>{selected.lastContact ? new Date(selected.lastContact).toLocaleString() : "No call saved"}</strong></div><div><small>Product discussed</small><strong>{selected.productDiscussed || "Not specified"}</strong></div><div><small>Main concern</small><strong>{selected.concerns || "Not specified"}</strong></div></div>
           <div className="tracking-facts"><div><small>Customer needs</small><strong>{selected.needs || "Not specified"}</strong></div><div><small>Next follow-up</small><strong>{selected.followUpDate || "Not scheduled"}</strong></div><div><small>Notes</small><strong>{selected.notes || "No notes"}</strong></div></div>
           <div className="customer-readiness"><div className="readiness-heading"><div><span>Purchase readiness</span><small>{selectedTier?.label} · seller estimate</small></div><strong>{selectedScore === undefined ? "—" : <>{selectedScore}<small>/10</small></>}</strong></div><label className="readiness-score-control"><span>Score</span><select aria-label={`Purchase readiness score for ${selected.name}`} value={selectedScore ?? ""} onChange={(event) => { const value = event.target.value; if (!value) return; const parsed = Number(value); if (validReadinessScore(parsed)) setScores((current) => ({ ...current, [selected.id]: parsed })); }}><option value="">Unscored · select 1–10</option>{Array.from({ length: 10 }, (_, index) => index + 1).map((score) => <option key={score} value={score}>{score} / 10</option>)}</select></label><div className="readiness-scale"><span>Tier follows score</span><span>Follow-up urgency is separate</span></div></div>
+          {selected.doNotContact&&<div className="tracking-error">Do not contact · customer requested no further outreach.</div>}
+          {selected.followUpRecommendation&&<div className="precall-brief"><span className="eyebrow">{selected.followUpRecommendation.basis==="agreed"?"CUSTOMER-REQUESTED FOLLOW-UP":"SUGGESTED FOLLOW-UP"}</span><p><strong>{selected.followUpRecommendation.date}</strong> · {selected.followUpRecommendation.reason}</p></div>}
+          {!!selected.criticalInformation?.length&&<div className="customer-evidence"><span className="eyebrow">CRITICAL CUSTOMER INFORMATION</span>{selected.criticalInformation.slice(-6).map((x,i)=><p key={i}><strong>{x.kind}:</strong> {x.text}</p>)}</div>}
           <div className="account-summary"><span>LATEST CALL SUMMARY <AssistantMascot/></span><p>{selected.summary}</p></div>
         </Panel>
         <Panel title="Call history" subtitle={`${selected.callHistory.length} saved call${selected.callHistory.length === 1 ? "" : "s"}`}>
@@ -182,7 +187,7 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
       </div> : <Panel title="No customer selected" subtitle="Add a customer to begin tracking"><button className="primary-button" onClick={openAddCustomer}><Plus size={15}/> Add Customer</button></Panel>}
     </div>
     {customerForm && <div className="product-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCustomerForm(null); }}><section className="product-dialog-card customer-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-form-title"><button className="product-dialog-close" aria-label="Close" onClick={() => setCustomerForm(null)}><X size={17}/></button><div className="product-dialog-heading"><span className="product-dialog-icon"><Plus size={19}/></span><div><span className="product-dialog-eyebrow"><Sparkles size={12}/> CUSTOMER WORKSPACE</span><h2 id="customer-form-title">{customerForm === "add" ? "Add a customer" : "Edit customer"}</h2><p>Save confirmed customer details and follow-up context.</p></div><AssistantMascot/></div><div className="product-form-grid customer-form-grid">
-      <label>Customer name *<input autoFocus value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} placeholder="e.g. Alex Chen" maxLength={100}/></label>
+      <label>Name (optional)<input autoFocus value={customerDraft.name} onChange={(event) => setCustomerDraft({ ...customerDraft, name: event.target.value })} placeholder="e.g. Alex Chen" maxLength={100}/></label>
       <label>Company<input value={customerDraft.company} onChange={(event) => setCustomerDraft({ ...customerDraft, company: event.target.value })} placeholder="Company name" maxLength={100}/></label>
       <label>Job title<input value={customerDraft.role} onChange={(event) => setCustomerDraft({ ...customerDraft, role: event.target.value })} placeholder="e.g. Operations Manager" maxLength={100}/></label>
       <label>Contact information<input value={customerDraft.contact} onChange={(event) => setCustomerDraft({ ...customerDraft, contact: event.target.value })} placeholder="Email or phone (optional)" maxLength={140}/></label>
@@ -192,8 +197,8 @@ export function CustomerTrackingWorkspace({ onStartConversation }: { onStartConv
       <label>Customer needs<input value={customerDraft.needs} onChange={(event) => setCustomerDraft({ ...customerDraft, needs: event.target.value })} placeholder="What are they looking for?" maxLength={240}/></label>
       <label className="customer-form-wide">Main concerns<input value={customerDraft.concerns} onChange={(event) => setCustomerDraft({ ...customerDraft, concerns: event.target.value })} placeholder="Price, timing, product fit..." maxLength={240}/></label>
       <label className="customer-form-wide">Notes<textarea rows={3} value={customerDraft.notes} onChange={(event) => setCustomerDraft({ ...customerDraft, notes: event.target.value })} placeholder="Additional confirmed context" maxLength={1000}/></label>
-    </div>{customerError && <div className="tracking-error" role="alert">{customerError}</div>}<div className="product-dialog-footer"><span><AssistantMascot/>Stored in this browser only until a backend is connected.</span><div><button className="secondary-button" onClick={() => setCustomerForm(null)}>Cancel</button><button className="primary-button" onClick={saveCustomer}><Check size={15}/>{customerForm === "add" ? "Save Customer" : "Save Changes"}</button></div></div></section></div>}
-    {deleteConfirm && selected && <div className="product-dialog-backdrop"><section className="product-dialog-card delete-customer-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-customer-title"><button className="product-dialog-close" aria-label="Cancel delete" onClick={() => setDeleteConfirm(false)}><X size={17}/></button><span className="product-dialog-icon delete-dialog-icon"><Trash2 size={19}/></span><h2 id="delete-customer-title">Delete {selected.name}?</h2><p>This permanently removes the customer from this browser. Their associated call history and customer-specific follow-up actions will also be deleted. This cannot be undone.</p><div className="product-dialog-footer"><span>Make sure you selected the right customer.</span><div><button className="secondary-button" onClick={() => setDeleteConfirm(false)}>Keep customer</button><button className="danger-button" onClick={removeCustomer}><Trash2 size={14}/>Delete customer</button></div></div></section></div>}
+    </div>{customerError && <div className="tracking-error" role="alert">{customerError}</div>}<div className="product-dialog-footer"><span><AssistantMascot/>Saved locally and synced to the team database.</span><div><button className="secondary-button" onClick={() => setCustomerForm(null)}>Cancel</button><button className="primary-button" onClick={saveCustomer}><Check size={15}/>{customerForm === "add" ? "Save Customer" : "Save Changes"}</button></div></div></section></div>}
+    {deleteConfirm && selected && <div className="product-dialog-backdrop"><section className="product-dialog-card delete-customer-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-customer-title"><button className="product-dialog-close" aria-label="Cancel delete" onClick={() => setDeleteConfirm(false)}><X size={17}/></button><span className="product-dialog-icon delete-dialog-icon"><Trash2 size={19}/></span><h2 id="delete-customer-title">Archive {selected.name}?</h2><p>This hides the customer from the active list. Their phone identity and call history stay in the team database for future conversations.</p><div className="product-dialog-footer"><span>Make sure you selected the right customer.</span><div><button className="secondary-button" onClick={() => setDeleteConfirm(false)}>Keep customer</button><button className="danger-button" onClick={removeCustomer}><Trash2 size={14}/>Archive customer</button></div></div></section></div>}
   </>;
 }
 

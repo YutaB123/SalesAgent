@@ -35,6 +35,10 @@ export interface TrackedCustomer {
   summary: string;
   callHistory: CustomerCallHistory[];
   isSample?: boolean;
+  criticalInformation?: { text: string; quote: string; kind: string }[];
+  followUpRecommendation?: { date: string; reason: string; basis: "agreed" | "suggested" };
+  doNotContact?: boolean;
+  archived?: boolean;
 }
 export interface ConversationTurn { id: string; speaker: Speaker; text: string; time: string; source?: ConversationSource; }
 export interface ResponseSuggestion { id: string; title: string; text: string; strategy: string; explanation: string; verify: string; recommended?: boolean; }

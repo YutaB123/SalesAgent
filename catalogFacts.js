@@ -53,6 +53,7 @@ function describePlan(plan, maxAge) {
   if (plan.providerFeeCentsPerLine !== undefined) parts.push(`regulatory fee ${money(plan.providerFeeCentsPerLine)} per line, taxes extra`);
   if (plan.features?.length) parts.push(`includes: ${featureText(plan)}`);
   if (plan.eligibility) parts.push(`eligibility: ${plan.eligibility}`);
+  if(plan.verificationMethod === 'automatic-source-extraction')parts.push('machine-extracted source evidence; confirm offer eligibility before a final quote');
   parts.push(stamp(plan, maxAge));
   return `- ${plan.carrier} ${plan.name}: ${parts.join("; ")}`;
 }
@@ -67,7 +68,7 @@ async function catalogSheet() {
   const special = plans.filter((p) => p.carrier === "T-Mobile" && p.requiresEligibility);
   const others = plans.filter((p) => p.carrier !== "T-Mobile");
   cache.sheet = [
-    `OFFICIAL PLAN CATALOG (${catalog.market || "US consumer postpaid mobile"}; manually verified from the carriers' official pages; prices in USD per month). We sell T-Mobile plans.`,
+    `OFFICIAL PLAN CATALOG (${catalog.market || "US consumer postpaid mobile"}; source-backed official carrier pages; automatic extractions are identified separately; prices in USD per month). We sell T-Mobile plans.`,
     "How to use it: standard prices exclude taxes, provider fees, devices and discounts. An advertised offer is NOT what any customer pays today. Never claim T-Mobile is cheaper or better overall. Never invent credits, payoffs, discounts, deadlines or promotions: if it is not in this catalog, say you will confirm it. If a record is OLD, say \"as of <date>\" and offer to re-verify.",
     "",
     "T-MOBILE PLANS (general consumer plans):",
@@ -104,7 +105,7 @@ async function planFacts(text, history = []) {
     `- Compared against: ${result.target.carrier} ${result.target.name}${result.targetBaseMonthlyCents !== null ? `, ${c.lineCount} line(s): ${money(result.targetBaseMonthlyCents)} per month standard price before taxes and fees` : ""}; ${stamp(result.target, catalog.maxAgeDays ?? 14)}.`,
   ];
   if (result.status === "stale") lines.push("- STATUS: the saved prices are OLD. Do not state a difference. Say you will verify the current price first.");
-  else if (result.status === "needs_details") lines.push(`- STATUS: not enough to compare yet. Do NOT state any price difference or saving. Ask for what is missing: ${result.questions.slice(0, 3).join(" ")}`);
+  else if (result.status === "needs_details") lines.push(`- STATUS: not enough to compare yet. Do NOT state any price difference or saving. Recommend a relevant verified benefit now; request only the one missing detail necessary if they ask for an exact comparison. Missing facts: ${result.questions.slice(0, 3).join(" ")}`);
   else {
     const d = result.baseServiceDifferenceCents;
     lines.push(`- STATUS: usable. ${d > 0 ? `The T-Mobile standard service price is ${money(d)} per month LOWER than the customer's stated service charge` : d < 0 ? `The T-Mobile standard service price is ${money(-d)} per month HIGHER than the customer's stated service charge` : "The standard service prices are the same"}. Say which way it goes, honestly, and say this is not total-bill savings (fees, device balances and benefits still need review).`);
@@ -122,4 +123,5 @@ async function status() {
   return { storage: catalog.storage, count: (catalog.plans || []).length, oldest_verified: oldest, stale: oldest ? ageDays(oldest) > (catalog.maxAgeDays ?? 14) : true };
 }
 
-module.exports = { getCatalog, catalogSheet, planFacts, status };
+function invalidate(){cache={at:0,catalog:null,sheet:""};}
+module.exports = { invalidate, getCatalog, catalogSheet, planFacts, status };

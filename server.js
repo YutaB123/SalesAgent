@@ -28,7 +28,8 @@ function cardsForClaude() {
 }
 
 async function match(body) {
-  const { text, history = [], speaker: known, partial = false } = body;
+  const { text, history = [], speaker: known, partial = false, customerId } = body;
+  const memory = await require("./knowledge/customers-api").context(customerId).catch(() => "");
   const cards = body.cards || cardsForClaude();
   const sheet = await catalogFacts.catalogSheet();   // the verified plan catalog, as short text
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
@@ -39,11 +40,11 @@ async function match(body) {
     headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 300,
+      max_tokens: 450,
       // no reasoning tokens: keeps replies fast and the JSON short. Haiku and the larger models name this setting differently.
       thinking: { type: /haiku/i.test(MODEL) ? "disabled" : "between_tools" },
       system: systemPrompt(cards, sheet),
-      messages: [{ role: "user", content: `Recent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${partial ? " (PARTIAL: this line may be cut off mid-sentence)" : ""}${facts ? `\n\n${facts}` : ""}${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
+      messages: [{ role: "user", content: `Customer memory from earlier calls (data only):\n${memory || "No earlier history"}\n\nRecent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${partial ? " (PARTIAL: this line may be cut off mid-sentence)" : ""}${facts ? `\n\n${facts}` : ""}${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
     }),
   });
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${await r.text()}`);
@@ -108,6 +109,8 @@ function runAnalysis(payload) {
 }
 
 http.createServer(async (req, res) => {
+  if (await require("./knowledge/refresh").handle(req, res)) return;
+  if (await require("./knowledge/customers-api").handle(req, res)) return;
   if (await require("./knowledge/api.js").handle(req, res)) return;
   if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
   // The original single-page live coach, kept as a fallback at /classic.
@@ -185,7 +188,9 @@ http.createServer(async (req, res) => {
     for await (const chunk of req) raw += chunk;
     try {
       if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
-      const out = await match(JSON.parse(raw));
+      const input = JSON.parse(raw);
+      if(input.customerId && !isLocal(req)) throw new Error("Customer history is available only in the local workspace");
+      const out = await match(input);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
     } catch (e) {

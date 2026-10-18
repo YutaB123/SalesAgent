@@ -1,3 +1,4 @@
+import type { TrackedCustomer } from "../types/salesAgent";
 import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Mic, MicOff, Volume2 } from "lucide-react";
 import type { CoachRole } from "../types/coach";
@@ -27,7 +28,9 @@ function loadScript(src: string): Promise<void> {
 
 type Phase = "idle" | "checking" | "unavailable" | "ready" | "connected";
 
-export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
+export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLookupCustomer }: {
+  onBeforeDial: (phone: string) => Promise<TrackedCustomer>;
+  onLookupCustomer: (phone: string) => Promise<TrackedCustomer | undefined>;
   onAudioTrack: (role: CoachRole, track: MediaStreamTrack) => void;
   onCallEnded: () => void;
 }) {
@@ -38,6 +41,11 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
   const [number, setNumber] = useState("");
+  const [preview,setPreview]=useState<TrackedCustomer|null>(null);
+  const [lookupState,setLookupState]=useState("");
+  const [preparing,setPreparing]=useState(false);
+  const lookupRef=useRef(onLookupCustomer);lookupRef.current=onLookupCustomer;
+  useEffect(()=>{setPreview(null);if(number.replace(/\D/g,"").length<8){setLookupState("");return;}let cancelled=false;setLookupState("Looking up customer history…");const timer=setTimeout(()=>{void lookupRef.current(number).then(c=>{if(!cancelled){setPreview(c??null);setLookupState(c?"Previous conversations found":"New phone contact · saved automatically when you call");}}).catch(()=>{if(!cancelled)setLookupState("Could not fetch customer history. Retry before calling.");});},450);return()=>{cancelled=true;clearTimeout(timer);};},[number]);
   const [callState, setCallState] = useState("idle");
   const [muted, setMuted] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
@@ -98,7 +106,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
 
   const run = (fn: () => Promise<void>) => async () => { try { await fn(); } catch (error) { setMessage(error instanceof Error ? error.message : "Something went wrong."); } };
   const connect = run(async () => { await commsRef.current?.connect(); setPhase("connected"); });
-  const dial = run(async () => { if (window.confirm(`Call ${number}?`)) { setCallState("dialing"); await commsRef.current?.dial(number); } });
+  const dial = run(async () => { if (!window.confirm(`Call ${number}?`)) return;setPreparing(true);try {await onBeforeDial(number);setCallState("dialing");try{await commsRef.current?.dial(number);}catch(error){setCallState("failed");throw error;}}finally{setPreparing(false);} });
   const hangup = run(async () => { await commsRef.current?.hangup(); });
   const toggleMute = run(async () => { await commsRef.current?.mute(!muted); setMuted(!muted); });
   const enableSound = run(async () => { await commsRef.current?.enableSound(); setSoundBlocked(false); });
@@ -106,7 +114,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
   return (
     <section className="phone-panel">
       <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}><Phone size={15} />Call the customer by phone {open ? "−" : "+"}</button>
-      {open && <div className="phone-body">
+      {open && <div className="phone-body"><label className="phone-customer-field">Customer phone number<input type="tel" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="+1 425 555 0123" aria-label="Customer phone number" /></label>
         {phase === "unavailable" && <p className="phone-note">{message} <br />Phone calling needs the Photon and LiveKit settings in <code>.env</code> and the communications service running (see <code>communications/README.md</code>). You can still use the microphone and speakerphone instead.</p>}
         {phase === "checking" && <p className="phone-note">Checking phone setup…</p>}
         {(phase === "ready" || phase === "connected") && <>
@@ -114,13 +122,14 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded }: {
           <div className="phone-row">
             {phase === "ready" && <button className="secondary-button" onClick={connect}><Mic size={14} />Connect microphone</button>}
             {phase === "connected" && <>
-              <input type="tel" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="+1 425 555 0123" aria-label="Customer phone number" />
-              <button className="primary-button" onClick={dial} disabled={!number.trim() || active}><Phone size={14} />Call</button>
+
+              <button className="primary-button" onClick={dial} disabled={!number.trim() || active || preparing}><Phone size={14} />Call</button>
               <button className="danger-light" onClick={hangup} disabled={!active}><PhoneOff size={14} />Hang up</button>
               <button className="secondary-button" onClick={toggleMute}>{muted ? <MicOff size={14} /> : <Mic size={14} />}{muted ? "Unmute" : "Mute"}</button>
               {soundBlocked && <button className="secondary-button" onClick={enableSound}><Volume2 size={14} />Enable call sound</button>}
             </>}
           </div>
+          {<div className="precall-brief"><span className="eyebrow">BEFORE YOU CALL</span><p>{lookupState||"Enter a phone number to fetch the customer's history."}</p>{preview&&<><h3>{preview.name||preview.contact}</h3><p>{preview.summary}</p><div className="memory-facts">{preview.needs&&<span>Needs: {preview.needs}</span>}{preview.concerns&&<span>Open concerns: {preview.concerns}</span>}</div>{preview.followUpRecommendation&&<p>{preview.followUpRecommendation.basis==="agreed"?"Agreed follow-up":"Suggested follow-up"}: {preview.followUpRecommendation.date}</p>}{preview.doNotContact&&<p role="alert">Do not contact · this customer's opt-out is recorded.</p>}<small>{preview.callHistory.length} previous calls · recommendations will use this history</small></>}</div>}
           {phase === "connected" && <p className="phone-note">{callState === "dialing" ? <>Calling… the app starts listening <b>when the customer answers</b>.</> : callState === "answered" ? <>Customer answered. <b>Listening to both sides.</b></> : <>Ready to call. The app starts listening when the customer answers.</>} Use a headset so the customer's voice does not echo back.</p>}
         </>}
       </div>}

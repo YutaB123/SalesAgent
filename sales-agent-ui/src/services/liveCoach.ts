@@ -25,7 +25,7 @@ interface StreamState { segWords: DgWord[]; utt: Utterance; fixedRole?: CoachRol
 
 const wordCount = (text: string) => text.trim().split(/\s+/).length;
 const wordText = (w: DgWord) => w.punctuated_word || w.word;
-const contentOf = (card: Card): CardContent => ({ agree: card.agree, points: card.points, ask: card.ask });
+const contentOf = (card: Card): CardContent => ({ agree: card.agree, points: card.points, ask: card.stop ? "" : "I can show you an option that fits, with the full terms in writing." });
 
 /** Claude's rewritten card text, or null if it didn't send any. */
 function toContent(out: CoachResult): CardContent | null {
@@ -59,6 +59,8 @@ export class LiveCoach {
    * change the card on screen; older answers are kept for history but never shown.
    */
   private latest = 0;
+  private customerId = "";
+  setCustomer(customerId: string): void { this.customerId = customerId; }
   private claim(utt: Utterance): void { if (!utt.id) utt.id = ++this.latest; }
 
   constructor(private cards: Card[], private hooks: LiveCoachHooks, private useClaude: boolean) {}
@@ -153,7 +155,7 @@ export class LiveCoach {
     const n = wordCount(text);
     if (n < 4 || n < utt.lastLen + 3) return;
     utt.busy = true; utt.lastLen = n; utt.calls += 1;
-    askCoach(text, undefined, this.history, true)   // Claude also checks it's the customer talking; a half sentence may get "no card yet"
+    askCoach(text, undefined, this.history, true, this.customerId)   // Claude also checks it's the customer talking; a half sentence may get "no card yet"
       .then((out) => {
         utt.out = out; utt.outWords = n;
         if (utt.id !== this.latest) return;   // a newer sentence has started: this answer is out of date
@@ -202,7 +204,7 @@ export class LiveCoach {
     if (this.useClaude) {
       try {
         // Claude may already have answered while they were still talking: reuse it if the line barely grew.
-        out = utt?.out && wordCount(text) <= utt.outWords + 2 ? utt.out : await askCoach(text, role, this.history);
+        out = utt?.out && wordCount(text) <= utt.outWords + 2 ? utt.out : await askCoach(text, role, this.history, false, this.customerId);
       } catch { out = null; this.hooks.onError("Coaching request failed. Showing guidance; send the customer statement again to retry."); }
     }
     this.history.push("Customer: " + text);
