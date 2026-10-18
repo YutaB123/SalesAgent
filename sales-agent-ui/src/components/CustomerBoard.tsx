@@ -14,6 +14,7 @@ export function CustomerBoard({customers,selected,onSelect,children}:{customers:
  const [adding,setAdding]=useState(false),[deleting,setDeleting]=useState<TrackedCustomer|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [name,setName]=useState(''),[phone,setPhone]=useState(''),[email,setEmail]=useState(''),[country,setCountry]=useState<CountryCode>('US');
  const active=customers.filter(c=>customerGroup(c)==='active'),history=customers.filter(c=>customerGroup(c)==='history');
+ useEffect(()=>{if(selected&&history.some(customer=>customer.id===selected))setHistoryOpen(true);},[selected,customers]);
  const move=(id:string,group:CustomerGroup)=>{
   const c=repo.list().find(x=>x.id===id);if(!c||customerGroup(c)===group)return;
   if(c.doNotContact&&group==='active'){setError('This customer requested no further contact.');return;}
@@ -38,7 +39,7 @@ export function CustomerBoard({customers,selected,onSelect,children}:{customers:
  const row=(c:TrackedCustomer)=>{
   const group=customerGroup(c),target=group==='active'?'history':'active';
   return <div key={c.id} className={`customer-list-item ${selected===c.id?'selected':''} ${dragging===c.id?'dragging':''}`} onPointerDown={e=>{if(e.button!==0||(e.target as Element).closest('.customer-row-tools'))return;pointer.current={id:c.id,x:e.clientX,y:e.clientY,moving:false};}} onClickCapture={e=>{if(suppressClick.current){e.preventDefault();e.stopPropagation();}}}>
-   <button className="customer-select" aria-expanded={selected===c.id} onClick={()=>onSelect(selected===c.id?'':c.id)}><GripVertical size={15} className="customer-grip" aria-hidden="true"/><span className="customer-list-copy"><strong>{c.name}</strong><small>{c.purchaseStage||'Not assessed'}</small><span className="customer-score-row"><span title="Purchase readiness"><b>{c.readiness??'—'}<small>/10</small></b><small>Readiness</small></span><span title="Sales communication score"><b>{c.communicationScore??'—'}<small>/100</small></b><small>Communication</small></span></span></span></button>
+   <button className="customer-select" aria-expanded={selected===c.id} onClick={()=>onSelect(selected===c.id?'':c.id)}><GripVertical size={15} className="customer-grip" aria-hidden="true"/><span className="customer-list-copy"><strong>{c.name}</strong><small>{c.purchaseStage||'Not assessed'}</small><span className="customer-score-row"><span title="Buying intent"><b>{c.readiness??'—'}<small>/10</small></b><small>Buying Intent</small></span></span></span></button>
    <div className="customer-row-tools"><button aria-label={`Move ${c.name} to ${target==='active'?'Active':'History'}`} title={`Move to ${target==='active'?'Active':'History'}`} disabled={c.doNotContact&&target==='active'} onClick={()=>move(c.id,target)}>{target==='active'?<ArrowUp size={14}/>:<ArrowDown size={14}/>}</button><button className="delete-customer" aria-label={`Delete ${c.name}`} title="Delete customer" onClick={()=>setDeleting(c)}><Trash2 size={14}/></button></div>
   </div>;
  };

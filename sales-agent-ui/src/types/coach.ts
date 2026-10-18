@@ -37,4 +37,40 @@ export interface PostCallReport {
   schema_version: string;
 }
 
+export interface RecoverySummary {
+  text: string;
+  evidence: Evidence[];
+  conversationSummary: string;
+  dealStatus: "at_risk" | "uncertain" | "low_risk";
+  dealRiskScore: number;
+  scoringMethod: "heuristic_demo";
+  scoreExplanation: string;
+  riskSignals: { type: string; severity: string; evidence: string; turn_id: number }[];
+  unresolvedObjections: string[];
+  recommendedAction: { type: string; priority: string; channel: string; reason: string };
+  missingInformation: string[];
+}
+
+export interface FollowUpDraft {
+  channel: "email" | "message";
+  channelReason: string;
+  subject: string | null;
+  message: string;
+  personalizationEvidence: string[];
+  contactPermissionConfirmed: boolean;
+  requiresSellerApproval: boolean;
+  sendStatus: "draft" | "marked_sent_manually";
+}
+
+export interface PostCallRecovery {
+  summary: RecoverySummary;
+  followUp: FollowUpDraft;
+}
+
+export interface PostCallResponse {
+  report: PostCallReport;
+  summary: RecoverySummary;
+  followUp: FollowUpDraft;
+}
+
 export interface ServerStatus { claude: boolean; deepgram: boolean; model?: string; }

@@ -1,4 +1,4 @@
-import type { Card, CoachResult, CoachRole, PostCallReport, ServerStatus } from "../types/coach";
+import type { Card, CoachResult, CoachRole, PostCallResponse, ServerStatus } from "../types/coach";
 
 // Thin client for the Node server at the repo root (same origin; in `pnpm dev` Vite proxies /api there).
 
@@ -35,8 +35,13 @@ export async function fetchDeepgramToken(): Promise<string> {
 }
 
 /** Post-call report (Eva's call_analysis.py, run with Claude). Takes a few seconds. */
-export async function requestPostCall(lines: { speaker: CoachRole; text: string }[]): Promise<PostCallReport> {
-  return (await json<{ report: PostCallReport }>(await fetch("/api/post-call", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lines }),
-  }))).report;
+export async function requestPostCall(
+  lines: { speaker: CoachRole; text: string }[],
+  needs?: unknown,
+  customer?: { name?: string; contact?: string; confirmedChannel?: string; recommendedChannel?: string }
+): Promise<PostCallResponse> {
+  return json<PostCallResponse>(await fetch("/api/post-call", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ lines, needs, customer }),
+  }));
 }

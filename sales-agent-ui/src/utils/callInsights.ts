@@ -25,11 +25,17 @@ export function stageFromReport(report: PostCallReport): string | undefined {
  * Starts from the stage the customer is at, plus one point if they agreed to a specific next step with a time.
  * This is deliberately simple and explainable. It is not the report's seller-communication score.
  */
-export function readinessFromReport(report: PostCallReport): number | undefined {
-  const base: Record<string, number> = { Exploring: 3, Comparing: 5, "Ready to buy": 8, "Not considering": 1 };
+export function readinessFromReport(report: PostCallReport, transcript?: { speaker: string; text: string }[]): number | undefined {
+  const base: Record<string, number> = { Exploring: 3, Comparing: 6, "Ready to buy": 9, "Not considering": 1 };
   const label = report.purchase_stage?.label;
-  if (!label || !(label in base)) return undefined;
   const agreedNextStep = report.follow_up_actions.some((a) => a.kind === "promised" && Boolean(a.time_text));
+  const customerQuotes = [
+    ...(report.purchase_stage?.evidence || []).map(item => item.quote),
+    ...(transcript || []).filter(turn => turn.speaker === "customer").map(turn => turn.text),
+  ];
+  const explicitBuyingIntent = customerQuotes.some(quote => /\b(?:i(?:'m| am) ready to (?:buy|purchase|order|get it)|i(?:'m| am) going to (?:buy|purchase|order|get it)|i(?:'d| would) like to (?:buy|purchase|order|get it)|i want to (?:buy|purchase|order|get it)|i(?:'ll| will) take it|let'?s do it|sign me up|go ahead and (?:order|buy)|i want to buy it)\b|(?:我要买|我想买|我准备买|我决定买|就买这个|我要这个|可以下单|现在下单|帮我订|就按这个买)/i.test(quote));
+  if (explicitBuyingIntent) return agreedNextStep ? 10 : 9;
+  if (!label || !(label in base)) return undefined;
   return Math.max(1, Math.min(10, base[label] + (agreedNextStep && label !== "Not considering" ? 1 : 0)));
 }
 

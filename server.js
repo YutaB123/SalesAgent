@@ -21,6 +21,7 @@ const { recommend } = require("./knowledge/recommendations");
 const { extractNeeds } = require("./knowledge/extract-needs");
 const { updateNeeds } = require("./knowledge/update-needs");
 const { explainRecommendation } = require("./knowledge/explanation");
+const { buildDealRecovery } = require("./knowledge/deal-recovery");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
@@ -191,11 +192,29 @@ http.createServer(async (req, res) => {
     for await (const chunk of req) raw += chunk;
     try {
       if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
-      const { lines } = JSON.parse(raw);
+      const { lines, needs = {}, customer = {} } = JSON.parse(raw);
       if (!Array.isArray(lines) || !lines.length) throw new Error("send {\"lines\": [{speaker, text}, ...]}");
       const report = await runAnalysis({ lines, product_context: await catalogFacts.catalogSheet() });
+      const recovery = buildDealRecovery({
+        report,
+        lines: lines.map(line => ({ ...line, speaker: line.speaker === "rep" ? "seller" : line.speaker })),
+        needs,
+        customer
+      });
+      const summary = {
+        ...report.summary,
+        conversationSummary: report.summary.text,
+        dealStatus: recovery.dealStatus,
+        dealRiskScore: recovery.dealRiskScore,
+        scoringMethod: recovery.scoringMethod,
+        scoreExplanation: recovery.scoreExplanation,
+        riskSignals: recovery.riskSignals,
+        unresolvedObjections: recovery.unresolvedObjections,
+        recommendedAction: recovery.recommendedAction,
+        missingInformation: recovery.missingInformation
+      };
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ report }));
+      res.end(JSON.stringify({ report, summary, followUp: recovery.followUp }));
     } catch (e) {
       console.error("post-call:", e.message);
       res.writeHead(502, { "content-type": "application/json" });

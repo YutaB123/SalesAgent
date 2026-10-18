@@ -13,7 +13,7 @@ export interface CustomerRepository {
   /** Update a few fields on a customer (used to copy a post-call report onto the record). */
   patch(customerId: string, fields: Partial<Pick<TrackedCustomer, "purchaseStage" | "readiness" | "followUpDate" | "needs" | "concerns" | "notes" | "criticalInformation" | "followUpRecommendation" | "doNotContact" | "summary" | "confidence" | "followUpTasks" | "followUpPending" | "recommendedChannel" | "confirmedChannel" | "recommendedPlan" | "communicationScore" | "trackingGroup">>): TrackedCustomer[];
   /** Fill in a saved call's summary, concerns and next steps once the post-call report is ready. */
-  updateCall(customerId: string, callId: string, patch: Partial<Pick<CustomerCallHistory, "summary" | "concerns" | "nextSteps">>): TrackedCustomer[];
+  updateCall(customerId: string, callId: string, patch: Partial<Pick<CustomerCallHistory, "summary" | "concerns" | "nextSteps" | "recovery" | "recoveryContextCallIds">>): TrackedCustomer[];
 }
 
 function read(): TrackedCustomer[] {
@@ -21,11 +21,43 @@ function read(): TrackedCustomer[] {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
     const parsed: unknown = JSON.parse(stored);
-    if (Array.isArray(parsed)) return (parsed as TrackedCustomer[]).filter(c=>!c.archived);
+    if (Array.isArray(parsed)) return parsed.filter((c): c is TrackedCustomer => !!c && typeof c === "object" && !c.archived).map(normalizeCustomer);
   } catch {
     // Keep the sample experience available when storage is unavailable or malformed.
   }
   return [];
+}
+
+// Older saved records can predate newer profile and call-history fields. Keep
+// them readable instead of letting one incomplete record break the whole page.
+function normalizeCustomer(value: TrackedCustomer): TrackedCustomer {
+  const record = value as TrackedCustomer & Record<string, unknown>;
+  return {
+    ...record,
+    id: typeof record.id === "string" ? record.id : "legacy-" + Math.random().toString(36).slice(2, 10),
+    name: typeof record.name === "string" ? record.name : "Unknown customer",
+    company: typeof record.company === "string" ? record.company : "",
+    role: typeof record.role === "string" ? record.role : "",
+    contact: typeof record.contact === "string" ? record.contact : "",
+    needs: typeof record.needs === "string" ? record.needs : "",
+    concerns: typeof record.concerns === "string" ? record.concerns : "",
+    productDiscussed: typeof record.productDiscussed === "string" ? record.productDiscussed : "",
+    purchaseStage: typeof record.purchaseStage === "string" ? record.purchaseStage : "Discovery",
+    followUpDate: typeof record.followUpDate === "string" ? record.followUpDate : "",
+    notes: typeof record.notes === "string" ? record.notes : "",
+    lastContact: typeof record.lastContact === "string" ? record.lastContact : "",
+    summary: typeof record.summary === "string" ? record.summary : "No previous calls yet.",
+    callHistory: Array.isArray(record.callHistory) ? record.callHistory.filter(call => !!call && typeof call === "object").map(call => ({
+      ...call,
+      id: typeof call.id === "string" ? call.id : createCustomerId(),
+      date: typeof call.date === "string" ? call.date : "",
+      summary: typeof call.summary === "string" ? call.summary : "",
+      productDiscussed: typeof call.productDiscussed === "string" ? call.productDiscussed : "",
+      concerns: Array.isArray(call.concerns) ? call.concerns : [],
+      nextSteps: Array.isArray(call.nextSteps) ? call.nextSteps : [],
+      transcript: Array.isArray(call.transcript) ? call.transcript : [],
+    })) : [],
+  };
 }
 
 function write(customers: TrackedCustomer[]) {
@@ -64,8 +96,8 @@ export function normalizePhone(value: string): string {
   return "+" + digits;
 }
 function mergeCloud(records: TrackedCustomer[], replace = false) {
- const dirty = readDirty(); const merged = new Map((replace ? Object.values(dirty) : read()).map(c => [c.id, c]));
- for (const c of records) if (!dirty[c.id]) merged.set(c.id, c);
+ const dirty = readDirty(); const merged = new Map((replace ? Object.values(dirty) : read()).filter(c => c && typeof c === "object").map(raw => { const c = normalizeCustomer(raw); return [c.id, c] as const; }));
+ for (const raw of records) if (raw && typeof raw === "object") { const c = normalizeCustomer(raw); if (!dirty[c.id]) merged.set(c.id, c); }
  localStorage.setItem(STORAGE_KEY, JSON.stringify([...merged.values()])); window.dispatchEvent(new Event("customers-updated"));
 }
 

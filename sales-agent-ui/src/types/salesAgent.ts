@@ -17,6 +17,8 @@ export interface CustomerCallHistory {
   concerns: string[];
   nextSteps: string[];
   transcript?: ConversationTurn[];
+  recovery?: import("./coach").PostCallRecovery;
+  recoveryContextCallIds?: string[];
 }
 export interface TrackedCustomer {
   email?: string;
