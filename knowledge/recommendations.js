@@ -20,16 +20,17 @@ function scoreMatch(item, usage = [], priorities = []) {
 
 function recommend(needs = {}) {
   const lines = Math.max(1, Number(needs.lines) || 1);
-  const budget = Number(needs.budgetTarget);
   const hasBudget =
-    needs.budgetTarget !== undefined &&
     needs.budgetTarget !== null &&
+    needs.budgetTarget !== undefined &&
     needs.budgetTarget !== "" &&
-    Number.isFinite(budget);
+    Number.isFinite(Number(needs.budgetTarget));
+  const budget = hasBudget ? Number(needs.budgetTarget) : null;
   const usage = Array.isArray(needs.usage) ? needs.usage : [];
   const priorities = Array.isArray(needs.priorities) ? needs.priorities : [];
-  const wantsNewPhone = needs.wantsNewPhone === true;
+  const wantsNewPhone = needs.wantsNewPhone ?? null;
   const osPreference = String(needs.osPreference || "Any").toLowerCase();
+  const phoneBudget = needs.phoneBudget;
 
   const eligiblePlans = data.plans.filter(
     (plan) => lines >= (plan.minimum_lines || 1)
@@ -49,6 +50,34 @@ function recommend(needs = {}) {
       const phoneMonthly = phone ? phone.mock_monthly_payment_24mo : 0;
       const totalMonthly = Number((planMonthly + phoneMonthly).toFixed(2));
       if (hasBudget && totalMonthly > budget) continue;
+      if (
+        phone &&
+        phoneBudget != null &&
+        Number.isFinite(Number(phoneBudget)) &&
+        phone.mock_retail_price > Number(phoneBudget)
+      ) continue;
+
+      const budgetFit = hasBudget
+        ? {
+            budget,
+            monthlyTotal: totalMonthly,
+            remaining: Number((budget - totalMonthly).toFixed(2)),
+            withinBudget: totalMonthly <= budget
+          }
+        : {
+            budget: null,
+            monthlyTotal: totalMonthly,
+            remaining: null,
+            withinBudget: null
+          };
+      const costBreakdown = {
+        planMonthly,
+        deviceMonthly: phoneMonthly,
+        totalMonthly,
+        deviceRetailPrice: phone ? phone.mock_retail_price : null,
+        oneTimeCharges: null,
+        oneTimeChargesStatus: "not_modeled"
+      };
 
       combinations.push({
         plan: {
@@ -64,6 +93,8 @@ function recommend(needs = {}) {
               id: phone.id,
               brand: phone.brand,
               model: phone.model,
+              os: phone.os,
+              storageGb: phone.storage_gb,
               retailPrice: phone.mock_retail_price,
               monthlyPayment: phone.mock_monthly_payment_24mo,
               features: phone.features || [],
@@ -71,6 +102,8 @@ function recommend(needs = {}) {
             }
           : null,
         monthlyTotal: totalMonthly,
+        budgetFit,
+        costBreakdown,
         score:
           scoreMatch(plan, usage, priorities) +
           (phone ? scoreMatch(phone, usage, priorities) : 0) +
@@ -102,7 +135,8 @@ function recommend(needs = {}) {
       usage,
       priorities,
       osPreference,
-      wantsNewPhone
+      wantsNewPhone,
+      phoneBudget: needs.phoneBudget ?? null
     },
     recommendations
   };
