@@ -63,6 +63,7 @@ async function refreshSupplier(body){
 async function handle(req,res){
  if(req.url.split('?')[0]!=='/api/plan-refresh')return false;
  const send=(status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data))};
+ if(process.env.SALES_DATA_MODE !== 'real'){send(410,{error:'Live catalog refresh is disabled in the fictional demo.'});return true;}
  if(!require('./access').workspaceAccess(req)||req.headers['x-plan-action']!=='1'){send(403,{error:'Refresh is available only in the local workspace'});return true;}
  try{if(req.method!=='POST')throw Error('Use POST to refresh a supplier');let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4000)throw Error('Request too large');}send(200,await refreshSupplier(JSON.parse(raw)));}catch(e){send(400,{error:e.message});}return true;
 }

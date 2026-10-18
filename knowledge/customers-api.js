@@ -1,4 +1,4 @@
-const {operation}=require('./api');
+const {demoOperation:operation}=require('./demo-api');
 async function handle(req,res){
  const url=new URL(req.url,'http://localhost');if(url.pathname!=='/api/customers')return false;
  const send=(status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data))};
