@@ -18,3 +18,5 @@
 @media(max-width:1050px){.focus-app{--nav-width:170px}.customer-layout{grid-template-columns:245px minmax(0,1fr);gap:18px}.focus-main{padding:24px}.focus-nav>b{font-size:17px}}
 @media(max-width:800px){.focus-app{--nav-width:105px;display:grid}.focus-nav{flex-direction:column;flex-wrap:nowrap;padding:16px 8px 10px}.focus-nav>b{font-size:14px;padding:0 3px 4px}.focus-nav>b small{display:block;width:max-content;margin-top:6px}.focus-nav-pages>button{font-size:13px;gap:10px}.focus-nav-pages .notification-dot{top:8px;right:8px;width:18px;height:18px;font-size:10px}.focus-nav>small{font-size:9px;padding:3px}.focus-main{padding:18px}.customer-layout{grid-template-columns:1fr}.focus-main header{flex-direction:column;align-items:flex-start}.customer-score-row{gap:26px}.customer-groups .customer-select{padding-right:70px}.customer-row-tools{flex-direction:row;right:12px}}
 @media(prefers-reduced-motion:reduce){.customer-drop-zone{transition:none}}
+
+.customer-list-item{user-select:none}.customer-grip{touch-action:none}.customer-list-item.dragging{cursor:grabbing}
