@@ -20,3 +20,4 @@
 @media(prefers-reduced-motion:reduce){.customer-drop-zone{transition:none}}
 
 .customer-list-item{user-select:none}.customer-grip{touch-action:none}.customer-list-item.dragging{cursor:grabbing}
+.recommendation-content{border-top:1px solid #e9e4f0;margin-top:24px;padding-top:20px}.recommendation-note{font-size:12px;color:#8a8097;line-height:1.5;margin:-10px 0 16px}.recommendation-card{border:1px solid #ebe7f2;border-radius:12px;padding:16px;margin-top:12px}.recommendation-card h3{font-size:15px;margin:0 0 8px}.recommendation-card p{margin:0 0 6px;font-size:14px;color:#302b3d}.recommendation-card small{font-size:11px;color:#81778d;line-height:1.5}.recommendation-error{font-size:13px;color:#a42c42;background:#fff0f2;padding:12px;border-radius:8px}

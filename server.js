@@ -17,6 +17,8 @@ const { CARDS } = require("./cards.js");
 const { systemPrompt } = require("./prompt.js");
 const { cardProblem } = require("./guard.js");
 const catalogFacts = require("./catalogFacts.js");
+const { recommend } = require("./knowledge/recommendations");
+const { extractNeeds } = require("./knowledge/extract-needs");
 const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
@@ -128,6 +130,33 @@ http.createServer(async (req, res) => {
     } catch (e) {
       res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" });
       return res.end(JSON.stringify({ error: "Phone database is unavailable." }));
+    }
+  }
+  if (req.method === "POST" && req.url === "/api/recommend") {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    try {
+      const body = JSON.parse(raw || "{}");
+      const needs = body.transcript
+        ? extractNeeds(body.transcript)
+        : body;
+
+      const recommendationNeeds = {
+        ...needs,
+        ...body,
+        usage: needs.usage || []
+      };
+      const result = recommend(recommendationNeeds);
+
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify(result));
+    } catch (error) {
+      console.error("Recommendation error:", error);
+      res.writeHead(500, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({
+        status: "error",
+        message: "Could not generate recommendations"
+      }));
     }
   }
   // Post-call report (Eva's call_analysis.py, run with Claude).
