@@ -89,7 +89,7 @@ export function RecommendationPanel({ needs, enabled }: { needs: CustomerNeeds; 
     {error && <p className="recommendation-error" role="alert">{error}</p>}
     {result?.status === 'no_match' && <section className="recommendation-card"><h3>No suitable match yet</h3><p>No phone and plan combination matches the current criteria.</p><p>Confirm the budget or ask whether the customer is willing to consider another device or plan.</p></section>}
     {result?.status === 'error' && <p className="recommendation-error" role="alert">Could not generate recommendations.</p>}
-    {result?.recommendations?.map((item) => <article className="recommendation-card" key={`${item.plan.id}-${item.phone?.id ?? 'no-phone'}`}>
+    <div className="recommendation-grid">{result?.recommendations?.map((item) => <article className="recommendation-card" key={`${item.plan.id}-${item.phone?.id ?? 'no-phone'}`}>
       <h3>{item.phone ? `${item.phone.brand} ${item.phone.model} + ${item.plan.name}` : item.plan.name}</h3>
       <div className="recommendation-costs">
         <p>Plan: ${item.costBreakdown.planMonthly.toFixed(2)}/month</p>
@@ -101,6 +101,6 @@ export function RecommendationPanel({ needs, enabled }: { needs: CustomerNeeds; 
       {item.explanation.reasons.map((reason, index) => <p className="recommendation-reason" key={index}>✓ {reason}</p>)}
       {item.explanation.budgetFit.withinBudget === true && <p className="recommendation-reason">Remaining budget: ${item.explanation.budgetFit.remaining!.toFixed(2)}/month</p>}
       {item.explanation.tradeoffs.map((tradeoff, index) => <small className="recommendation-tradeoff" key={index}>Trade-off: {tradeoff}</small>)}
-    </article>)}
+    </article>)}</div>
   </div>;
 }

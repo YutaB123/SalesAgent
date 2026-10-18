@@ -32,11 +32,12 @@ function loadScript(src: string): Promise<void> {
 
 type Phase = "idle" | "checking" | "unavailable" | "ready" | "connected";
 
-export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLookupCustomer }: {
+export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBeforeDial, onLookupCustomer }: {
   onBeforeDial: (phone: string) => Promise<TrackedCustomer>;
   onLookupCustomer: (phone: string) => Promise<TrackedCustomer | undefined>;
   onAudioTrack: (role: CoachRole, track: MediaStreamTrack) => void;
   onCallEnded: () => void;
+  onCallAnswered: () => void;
 }) {
   const commsRef = useRef<Comms | null>(null);
   const held = useRef<Partial<Record<CoachRole, MediaStreamTrack>>>({});   // audio we have but are not transcribing yet
@@ -67,6 +68,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
   }, [active]);
   const onTrack = useRef(onAudioTrack); onTrack.current = onAudioTrack;
   const onEnded = useRef(onCallEnded); onEnded.current = onCallEnded;
+  const onAnswered = useRef(onCallAnswered); onAnswered.current = onCallAnswered;
 
   // Check whether this server has phone calling set up, then load the browser module.
   useEffect(() => {
@@ -98,6 +100,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
           if (next === "answered" && !answered.current) {
             answered.current = true;   // the customer picked up: start transcribing both sides
             setOpen(false);
+            window.requestAnimationFrame(() => onAnswered.current());
             (["rep", "customer"] as CoachRole[]).forEach((role) => { const track = held.current[role]; if (track) onTrack.current(role, track); });
           }
           if (next === "ended" || next === "failed") { answered.current = false; delete held.current.customer; setOpen(true); }   // keep the rep mic for the next call
