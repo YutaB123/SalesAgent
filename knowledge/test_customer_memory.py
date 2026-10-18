@@ -33,3 +33,18 @@ class ContactPreferenceTests(unittest.TestCase):
    upsert(store,dict(row,archived=True))
    self.assertEqual(list_records(store)['customers'],[])
    self.assertEqual(len(list_records(store,phone='+12025550199')['customers']),1)
+
+class CustomerBoardTests(unittest.TestCase):
+ def test_group_moves_scores_and_deletion_survive_database_reload(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   db=Path(tmp)/'crm.sqlite';store=Store(db);initialize(store)
+   saved=upsert(store,{'id':'new','name':'New customer','contact':'+12025550198','trackingGroup':'active','readiness':8,'communicationScore':92,'followUpTasks':[{'id':'t','title':'Review quote','completed':False}],'callHistory':[]})['customer']
+   for group in ['history','active']:
+    upsert(store,dict(saved,trackingGroup=group))
+    row=list_records(Store(db),customer_id=saved['id'])['customers'][0]
+    self.assertEqual(row['trackingGroup'],group)
+    self.assertEqual(row['readiness'],8)
+    self.assertEqual(row['communicationScore'],92)
+    self.assertFalse(row['followUpTasks'][0]['completed'])
+   upsert(store,dict(row,archived=True))
+   self.assertEqual(list_records(Store(db))['customers'],[])
