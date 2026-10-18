@@ -7,21 +7,21 @@ from unittest.mock import patch
 from call_analysis import AnalysisError, CRITERIA, analyze_call
 
 TURNS = [
-    {"speaker": "seller", "text": "What matters most? I will email the comparison tomorrow."},
-    {"speaker": "customer", "text": "Price matters. I am comparing two plans."},
+    {"speaker": "seller", "text": "What matters most? I will email the phone details tomorrow."},
+    {"speaker": "customer", "text": "My phone budget is under $600 and camera quality matters."},
 ]
 
 
 def fixture():
     seller = [{"turn_id": 0, "quote": "What matters most?"}]
-    customer = [{"turn_id": 1, "quote": "I am comparing two plans."}]
+    customer = [{"turn_id": 1, "quote": "My phone budget is under $600 and camera quality matters."}]
     return {
-        "summary": {"text": "Customer is comparing plans.", "evidence": customer},
-        "customer_needs": [{"text": "Affordable plan", "evidence": [{"turn_id": 1, "quote": "Price matters."}]}],
+        "summary": {"text": "Customer is choosing a handset within budget.", "evidence": customer},
+        "customer_needs": [{"text": "Affordable handset", "evidence": [{"turn_id": 1, "quote": "My phone budget is under $600 and camera quality matters."}]}],
         "concerns": [{"category": "Price", "text": "Price matters", "evidence": customer}],
-        "purchase_stage": {"label": "Comparing", "reason": "Comparing plans", "evidence": customer},
-        "call_outcome": {"text": "Seller promised a comparison email", "evidence": [{"turn_id": 0, "quote": "I will email the comparison tomorrow."}]},
-        "follow_up_actions": [{"action": "Email comparison", "owner": "seller", "kind": "promised", "channel": "email", "time_text": "tomorrow", "evidence": [{"turn_id": 0, "quote": "I will email the comparison tomorrow."}]}],
+        "purchase_stage": {"label": "Comparing", "reason": "Comparing phones", "evidence": customer},
+        "call_outcome": {"text": "Seller promised to email phone details", "evidence": [{"turn_id": 0, "quote": "I will email the phone details tomorrow."}]},
+        "follow_up_actions": [{"action": "Email phone details", "owner": "seller", "kind": "promised", "channel": "email", "time_text": "tomorrow", "evidence": [{"turn_id": 0, "quote": "I will email the phone details tomorrow."}]}],
         "communication_scores": [{"criterion": key, "score": 3 if index == 0 else None, "reason": "Asked about priorities" if index == 0 else "Not observable", "evidence": seller if index == 0 else []} for index, key in enumerate(CRITERIA)],
     }
 

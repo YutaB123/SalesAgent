@@ -124,7 +124,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
     <section className="phone-panel">
       <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}><Phone size={15} />Start conversation</button>
       {open && <div className="phone-body"><CountryPhoneInput country={country} onCountry={setCountry} value={nationalNumber} onChange={setNumber} disabled={active||preparing}/>
-        <div className="phone-preview"><strong>{preview?.name||"New customer"}</strong><span>Recommended plan · {preview?.recommendedPlan||preview?.productDiscussed||"To confirm"}</span><small>{lookupState}</small></div>
+        <div className="phone-preview"><strong>{preview?.name||"New customer"}</strong><span>Phone to discuss · {preview?.recommendedPlan||preview?.productDiscussed||"To confirm"}</span><small>{lookupState}</small></div>
         {phase === "unavailable" && <p className="phone-note">{message} <br />Phone calling needs the Photon and LiveKit settings in <code>.env</code> and the communications service running (see <code>communications/README.md</code>). You can still use the microphone and speakerphone instead.</p>}
         {phase === "checking" && <p className="phone-note">Checking phone setup…</p>}
         {(phase === "ready" || phase === "connected") && <>

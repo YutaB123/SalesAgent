@@ -1,4 +1,4 @@
-// Tiny server: serves index.html and proxies card matching to Claude.
+// App server: serves the handset-coaching UI and its backend APIs.
 // Run:  set ANTHROPIC_API_KEY=sk-ant-...   then   node server.js
 const http = require("http");
 const fs = require("fs");
@@ -13,10 +13,7 @@ try {
   }
 } catch {}
 
-const { CARDS: ORIGINAL_CARDS } = require("./cards.js");
-// Keep each card's response distinct even when the catalog uses fictional demo plans.
-const demoText=text=>text.replace(/T-Mobile/g,'our demo service');
-const CARDS = process.env.SALES_DATA_MODE === 'real' ? ORIGINAL_CARDS : ORIGINAL_CARDS.map(c=>({...c,agree:demoText(c.agree),points:c.points.map(demoText),ask:demoText(c.ask)}));
+const { CARDS } = require("./cards.js");
 const { systemPrompt } = require("./prompt.js");
 const { cardProblem } = require("./guard.js");
 const catalogFacts = require("./catalogFacts.js");
@@ -34,10 +31,10 @@ async function match(body) {
   const { text, history = [], speaker: known, partial = false, customerId } = body;
   const memory = await require("./knowledge/customers-api").context(customerId).catch(() => "");
   const cards = body.cards || cardsForClaude();
-  const sheet = await catalogFacts.catalogSheet();   // the verified plan catalog, as short text
+  const sheet = await catalogFacts.catalogSheet();   // handset facts and dated full-retail snapshots
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
-  // rep lines never get a card, so they never need facts; for customer lines the plans database adds comparison facts when relevant
-  const facts = known === "rep" ? "" : await catalogFacts.planFacts(text, history).catch(() => "");
+  // Rep lines never need product facts; customer lines use the handset catalog.
+  const facts = known === "rep" ? "" : await catalogFacts.productFacts(text).catch(() => "");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -115,20 +112,23 @@ http.createServer(async (req, res) => {
     res.end(JSON.stringify({ ok: true, revision: process.env.RENDER_GIT_COMMIT || "local" }));
     return;
   }
-  if (await require("./knowledge/refresh").handle(req, res)) return;
   if (await require("./knowledge/customers-api").handle(req, res)) return;
   if (await require("./knowledge/followups-api").handle(req, res)) return;
-  if (await require("./knowledge/api.js").handle(req, res)) return;
   if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
-  // The original single-page live coach, kept as a fallback at /classic.
-  if (req.method === "GET" && req.url === "/classic") {
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
-  }
   // The card list as JSON, so the React app uses the same cards.js as the server.
   if (req.method === "GET" && req.url === "/api/cards") {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ cards: CARDS }));
+  }
+  if (req.method === "GET" && req.url === "/api/devices") {
+    try {
+      const catalog = await catalogFacts.getCatalog();
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify(catalog));
+    } catch (e) {
+      res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({ error: "Phone database is unavailable." }));
+    }
   }
   // Post-call report (Eva's call_analysis.py, run with Claude).
   //   POST /api/post-call  { "lines": [ { "speaker": "rep"|"customer", "text": "..." } ] }
@@ -182,7 +182,7 @@ http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/status") {
     res.writeHead(200, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY, plans: await catalogFacts.status() }));
+    return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY, devices: await catalogFacts.status() }));
   }
   // Mint a 30-second Deepgram token for the browser's websocket handshake; never return the long-lived API key.
   if (req.method === "GET" && req.url === "/api/dg-token") {
@@ -228,13 +228,13 @@ http.createServer(async (req, res) => {
     return;
   }
   if (req.method === "GET" && !req.url.startsWith("/api/") && serveUi(req, res)) return;
-  if (req.method === "GET" && req.url === "/") {   // no React build yet: fall back to the classic page
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
+  if (req.method === "GET" && req.url === "/") {
+    res.writeHead(503, { "content-type": "text/plain; charset=utf-8" });
+    return res.end("Sales Agent UI is not built. Run cd sales-agent-ui && pnpm install && pnpm build.");
   }
   res.writeHead(404); res.end();
 }).listen(PORT, "0.0.0.0", () => {
-  console.log(`Sales Agent: http://localhost:${PORT}   (classic live coach: /classic)`);
+  console.log(`Sales Agent: http://localhost:${PORT}`);
   console.log(fs.existsSync(path.join(UI_DIR, "index.html")) ? "React UI: serving sales-agent-ui/dist" : "React UI not built yet: run  cd sales-agent-ui && pnpm install && pnpm build");
   console.log(KEY ? `Claude matching ON (${MODEL})` : "ANTHROPIC_API_KEY not set: falling back to keyword matching");
 });

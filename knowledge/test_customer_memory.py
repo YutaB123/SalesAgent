@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from store import Store
+from demo_db import DemoStore as Store
 from customer_memory import initialize, normalize_phone, upsert, list_records
 
 class CustomerMemoryTests(unittest.TestCase):

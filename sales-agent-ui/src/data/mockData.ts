@@ -1,19 +1,19 @@
 import type { CallSummaryData, ConversationTurn, CustomerProfile, FollowUpTask, ObjectionCategory, ObjectionScenario, ProductInfo, ResponseSuggestion } from "../types/salesAgent";
 
-// All customer and product information below is fictional demo data.
+// Static UI example only; the live catalog is loaded from the JSON-backed database.
 export const product: ProductInfo = {
-  id: "sample-probook-x1", name: "ProBook X1", category: "Laptop · Sample product", price: "$1,299", description: "A sample laptop listing for the Sales Agent demo.",
-  facts: ["High-performance processor", "14-inch lightweight design", "Up to 15-hour battery life", "1-year warranty"],
+  id: "phone_pixel_10a", name: "Google Pixel 10a", category: "Demo phone · mainstream Android", price: "$499 mock retail", description: "Illustrative mock data only. This is not a live T-Mobile price or quote.",
+  facts: ["Storage: 128 GB", "OS: Android", "Mock monthly payment: $20.79 for 24 months", "Verify current availability and price with T-Mobile"],
 };
 export const customer: CustomerProfile = {
-  id: "demo-01", name: "Alex Chen", initials: "AC", role: "Tech Startup Founder", company: "Sample customer",
-  needs: ["Reliable laptop for a remote team"], concerns: ["Price", "Comparing with other brands"], purchaseStage: "Evaluation", intent: "medium",
+  id: "demo-01", name: "Alex Chen", initials: "AC", role: "Retail customer", company: "",
+  needs: ["Wants to compare phone cameras and price"], concerns: ["Device cost"], purchaseStage: "Evaluation", intent: "medium",
 };
 export const transcript: ConversationTurn[] = [
-  { id: "t1", speaker: "customer", text: "Hi, I'm looking for a laptop for my team. Can you tell me more about the ProBook X1?", time: "10:24 AM", source: "mock" },
-  { id: "t2", speaker: "seller", text: "Of course. I can walk you through the sample specifications and see what matters most for your team.", time: "10:24 AM", source: "mock" },
-  { id: "t3", speaker: "customer", text: "That sounds good, but your product seems more expensive than the alternatives.", time: "10:25 AM", source: "mock" },
-  { id: "t4", speaker: "seller", text: "I understand. Let me share some additional information that might be helpful.", time: "10:25 AM", source: "mock" },
+  { id: "t1", speaker: "customer", text: "I'm looking for a new phone. Camera quality matters, but I have a budget.", time: "10:24 AM", source: "mock" },
+  { id: "t2", speaker: "seller", text: "I can help compare phones sold by T-Mobile. What price range are you considering?", time: "10:24 AM", source: "mock" },
+  { id: "t3", speaker: "customer", text: "I'd like to stay under $600 and take good photos.", time: "10:25 AM", source: "mock" },
+  { id: "t4", speaker: "seller", text: "I'll check the listed phone options and verify today's prices and details.", time: "10:25 AM", source: "mock" },
 ];
 export const demoListeningTranscript = transcript;
 
@@ -70,19 +70,19 @@ export const suggestions: ResponseSuggestion[] = [
   { id: "s3", title: "Offer a comparison", text: "Would a side-by-side comparison of the listed specifications be useful?", strategy: "Offer a next step", explanation: "Moves the conversation forward without pressuring the customer.", verify: "Confirm competitor specifications before comparing." },
 ];
 export const summary: CallSummaryData = {
-  summary: "Alex is evaluating the ProBook X1 for a remote team and comparing it with another brand. Price is the main concern. Alex requested more detail before making a decision.",
-  needs: ["Reliable laptop for a remote team", "Compare product specifications"], concerns: ["Price", "Comparing with other brands"], purchaseStage: "Evaluation", outcome: "Continuing evaluation · Send product comparison",
+  summary: "Alex is looking for a phone under $600 and values camera quality. Check current T-Mobile handset listings and confirm the exact price and specifications.",
+  needs: ["Phone budget under $600", "Camera quality"], concerns: ["Device price"], purchaseStage: "Evaluation", outcome: "Review phone options and verify current details",
   scores: [
-    { category: "Understanding customer needs", score: 4, reason: "Confirmed the use case and invited the customer to explain their priorities." },
-    { category: "Answer clarity and accuracy", score: 4, reason: "Kept the response focused on information available in the sample product listing." },
-    { category: "Addressing concerns", score: 3, reason: "Recognized the price concern; a more specific comparison is still needed." },
-    { category: "Next-step clarity", score: 4, reason: "A product comparison gives the conversation a practical next step." },
+    { category: "Understanding customer needs", score: 4, reason: "Captured the handset budget and camera preference." },
+    { category: "Answer clarity and accuracy", score: 4, reason: "Committed to verifying current handset details before quoting." },
+    { category: "Addressing concerns", score: 3, reason: "Recognized the device price concern; exact configuration is still needed." },
+    { category: "Next-step clarity", score: 4, reason: "Checking the current phone listing is a clear next step." },
   ],
 };
 export const followUps: FollowUpTask[] = [
-  { id: "f1", title: "Send a product specification comparison", owner: "Sales Team", due: "Within 1 day" },
-  { id: "f2", title: "Follow up on the customer's price questions", owner: "Sales Team", due: "Within 2 days" },
-  { id: "f3", title: "Offer a product demo for the remote team", owner: "Solutions Engineer", due: "Within 3 days" },
+  { id: "f1", title: "Send details for the phone models discussed", owner: "Sales Team", due: "Within 1 day" },
+  { id: "f2", title: "Verify current handset pricing and availability", owner: "Sales Team", due: "Within 2 days" },
+  { id: "f3", title: "Arrange an in-store phone demonstration", owner: "Sales Team", due: "Within 3 days" },
   { id: "f4", title: "Check whether the customer has additional questions", owner: "Sales Team", due: "Within 1 week" },
 ];
 export const recentCalls = [

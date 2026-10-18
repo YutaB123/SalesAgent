@@ -1,0 +1,545 @@
+{
+  "metadata": {
+    "dataset_name": "T-Mobile Wireless Commerce Hackathon Mock Data",
+    "version": "1.0",
+    "purpose": "Demo-only dataset for personalized phone and plan recommendations",
+    "notice": "All prices, plan names, eligibility rules, customer profiles, and usage patterns are fictional. Phone model names are illustrative references only; this file is not a live T-Mobile inventory or quote.",
+    "currency": "USD",
+    "mock_device_financing_months": 24
+  },
+  "phones": [
+    {
+      "id": "phone_iphone_17e",
+      "brand": "Apple",
+      "model": "iPhone 17e",
+      "os": "iOS",
+      "category": "budget",
+      "mock_retail_price": 599,
+      "mock_monthly_payment_24mo": 24.96,
+      "storage_gb": 128,
+      "features": [
+        "everyday_use",
+        "long_software_support"
+      ],
+      "best_for": [
+        "budget_conscious",
+        "ios_preference",
+        "everyday_use"
+      ],
+      "tradeoffs": [
+        "fewer premium camera features than flagship models"
+      ]
+    },
+    {
+      "id": "phone_iphone_17",
+      "brand": "Apple",
+      "model": "iPhone 17",
+      "os": "iOS",
+      "category": "mainstream",
+      "mock_retail_price": 799,
+      "mock_monthly_payment_24mo": 33.29,
+      "storage_gb": 256,
+      "features": [
+        "everyday_use",
+        "photo",
+        "video",
+        "social_media"
+      ],
+      "best_for": [
+        "ios_preference",
+        "photo",
+        "video",
+        "social_media"
+      ],
+      "tradeoffs": [
+        "costs more than entry-level devices"
+      ]
+    },
+    {
+      "id": "phone_iphone_17_pro",
+      "brand": "Apple",
+      "model": "iPhone 17 Pro",
+      "os": "iOS",
+      "category": "flagship",
+      "mock_retail_price": 1099,
+      "mock_monthly_payment_24mo": 45.79,
+      "storage_gb": 256,
+      "features": [
+        "advanced_camera",
+        "high_performance",
+        "video"
+      ],
+      "best_for": [
+        "ios_preference",
+        "photo",
+        "video",
+        "power_user"
+      ],
+      "tradeoffs": [
+        "high device cost; premium features may be unnecessary for casual users"
+      ]
+    },
+    {
+      "id": "phone_galaxy_a17_5g",
+      "brand": "Samsung",
+      "model": "Galaxy A17 5G",
+      "os": "Android",
+      "category": "budget",
+      "mock_retail_price": 249,
+      "mock_monthly_payment_24mo": 10.38,
+      "storage_gb": 128,
+      "features": [
+        "everyday_use",
+        "5g",
+        "budget"
+      ],
+      "best_for": [
+        "budget_conscious",
+        "android_preference",
+        "everyday_use"
+      ],
+      "tradeoffs": [
+        "less powerful than flagship models"
+      ]
+    },
+    {
+      "id": "phone_galaxy_s26",
+      "brand": "Samsung",
+      "model": "Galaxy S26",
+      "os": "Android",
+      "category": "mainstream",
+      "mock_retail_price": 799,
+      "mock_monthly_payment_24mo": 33.29,
+      "storage_gb": 256,
+      "features": [
+        "photo",
+        "video",
+        "high_performance",
+        "5g"
+      ],
+      "best_for": [
+        "android_preference",
+        "photo",
+        "video",
+        "power_user"
+      ],
+      "tradeoffs": [
+        "more expensive than budget Android devices"
+      ]
+    },
+    {
+      "id": "phone_galaxy_s26_ultra",
+      "brand": "Samsung",
+      "model": "Galaxy S26 Ultra",
+      "os": "Android",
+      "category": "flagship",
+      "mock_retail_price": 1199,
+      "mock_monthly_payment_24mo": 49.96,
+      "storage_gb": 256,
+      "features": [
+        "advanced_camera",
+        "large_screen",
+        "high_performance",
+        "5g"
+      ],
+      "best_for": [
+        "android_preference",
+        "photo",
+        "video",
+        "power_user"
+      ],
+      "tradeoffs": [
+        "highest device cost in this sample"
+      ]
+    },
+    {
+      "id": "phone_pixel_10a",
+      "brand": "Google",
+      "model": "Pixel 10a",
+      "os": "Android",
+      "category": "mainstream",
+      "mock_retail_price": 499,
+      "mock_monthly_payment_24mo": 20.79,
+      "storage_gb": 128,
+      "features": [
+        "photo",
+        "everyday_use",
+        "android"
+      ],
+      "best_for": [
+        "budget_conscious",
+        "android_preference",
+        "photo",
+        "everyday_use"
+      ],
+      "tradeoffs": [
+        "fewer premium hardware features than flagship models"
+      ]
+    },
+    {
+      "id": "phone_pixel_10",
+      "brand": "Google",
+      "model": "Pixel 10",
+      "os": "Android",
+      "category": "mainstream",
+      "mock_retail_price": 799,
+      "mock_monthly_payment_24mo": 33.29,
+      "storage_gb": 128,
+      "features": [
+        "photo",
+        "video",
+        "everyday_use",
+        "android"
+      ],
+      "best_for": [
+        "android_preference",
+        "photo",
+        "video",
+        "everyday_use"
+      ],
+      "tradeoffs": [
+        "higher cost than budget Android options"
+      ]
+    },
+    {
+      "id": "phone_moto_g_2026",
+      "brand": "Motorola",
+      "model": "moto g (2026)",
+      "os": "Android",
+      "category": "budget",
+      "mock_retail_price": 199,
+      "mock_monthly_payment_24mo": 8.29,
+      "storage_gb": 128,
+      "features": [
+        "everyday_use",
+        "budget",
+        "large_battery"
+      ],
+      "best_for": [
+        "budget_conscious",
+        "android_preference",
+        "everyday_use",
+        "battery"
+      ],
+      "tradeoffs": [
+        "basic camera and performance compared with premium devices"
+      ]
+    },
+    {
+      "id": "phone_motorola_razr_2026",
+      "brand": "Motorola",
+      "model": "razr (2026)",
+      "os": "Android",
+      "category": "foldable",
+      "mock_retail_price": 799,
+      "mock_monthly_payment_24mo": 33.29,
+      "storage_gb": 256,
+      "features": [
+        "foldable",
+        "compact",
+        "style"
+      ],
+      "best_for": [
+        "android_preference",
+        "foldable_preference",
+        "style"
+      ],
+      "tradeoffs": [
+        "foldable design may cost more than a conventional phone"
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "id": "plan_basic",
+      "name": "Basic",
+      "mock_monthly_price_per_line": 30,
+      "minimum_lines": 1,
+      "data_profile": "everyday",
+      "features": [
+        "calls_texts",
+        "everyday_data"
+      ],
+      "best_for": [
+        "budget_conscious",
+        "everyday_use"
+      ],
+      "tradeoffs": [
+        "fewer premium extras"
+      ]
+    },
+    {
+      "id": "plan_plus",
+      "name": "Plus",
+      "mock_monthly_price_per_line": 45,
+      "minimum_lines": 1,
+      "data_profile": "high_usage",
+      "features": [
+        "calls_texts",
+        "high_speed_data",
+        "video_streaming"
+      ],
+      "best_for": [
+        "video",
+        "social_media",
+        "high_usage"
+      ],
+      "tradeoffs": [
+        "costs more than Basic"
+      ]
+    },
+    {
+      "id": "plan_premium",
+      "name": "Premium",
+      "mock_monthly_price_per_line": 60,
+      "minimum_lines": 1,
+      "data_profile": "premium",
+      "features": [
+        "calls_texts",
+        "high_speed_data",
+        "hotspot",
+        "premium_extras"
+      ],
+      "best_for": [
+        "high_usage",
+        "hotspot",
+        "premium_extras"
+      ],
+      "tradeoffs": [
+        "may be unnecessary for light users"
+      ]
+    },
+    {
+      "id": "plan_family",
+      "name": "Family Mix",
+      "mock_monthly_price_per_line": 35,
+      "minimum_lines": 2,
+      "data_profile": "shared_household",
+      "features": [
+        "calls_texts",
+        "multi_line_savings"
+      ],
+      "best_for": [
+        "family",
+        "multiple_lines",
+        "budget_conscious"
+      ],
+      "tradeoffs": [
+        "requires at least 2 lines; example price is per line"
+      ]
+    }
+  ],
+  "customers": [
+    {
+      "id": "customer_001",
+      "name": "Alex",
+      "budget_target_monthly_total": 60,
+      "current_monthly_cost": 85,
+      "lines": 1,
+      "os_preference": "iOS",
+      "usage": [
+        "video",
+        "social_media",
+        "everyday_use"
+      ],
+      "priorities": [
+        "lower_bill",
+        "keep_current_phone"
+      ],
+      "wants_new_phone": false,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_002",
+      "name": "Jordan",
+      "budget_target_monthly_total": 75,
+      "current_monthly_cost": 70,
+      "lines": 1,
+      "os_preference": "Android",
+      "usage": [
+        "photo",
+        "everyday_use"
+      ],
+      "priorities": [
+        "camera",
+        "reasonable_price"
+      ],
+      "wants_new_phone": true,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_003",
+      "name": "Sam",
+      "budget_target_monthly_total": 45,
+      "current_monthly_cost": 55,
+      "lines": 1,
+      "os_preference": "Any",
+      "usage": [
+        "everyday_use",
+        "calls_texts"
+      ],
+      "priorities": [
+        "lowest_cost"
+      ],
+      "wants_new_phone": true,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_004",
+      "name": "Taylor",
+      "budget_target_monthly_total": 100,
+      "current_monthly_cost": 95,
+      "lines": 1,
+      "os_preference": "iOS",
+      "usage": [
+        "photo",
+        "video",
+        "power_user"
+      ],
+      "priorities": [
+        "camera",
+        "performance"
+      ],
+      "wants_new_phone": true,
+      "wants_trade_in": true
+    },
+    {
+      "id": "customer_005",
+      "name": "Morgan",
+      "budget_target_monthly_total": 90,
+      "current_monthly_cost": 130,
+      "lines": 3,
+      "os_preference": "Any",
+      "usage": [
+        "everyday_use",
+        "video"
+      ],
+      "priorities": [
+        "family_savings",
+        "lower_bill"
+      ],
+      "wants_new_phone": false,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_006",
+      "name": "Riley",
+      "budget_target_monthly_total": 80,
+      "current_monthly_cost": 75,
+      "lines": 1,
+      "os_preference": "Android",
+      "usage": [
+        "foldable_preference",
+        "style"
+      ],
+      "priorities": [
+        "design"
+      ],
+      "wants_new_phone": true,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_007",
+      "name": "Casey",
+      "budget_target_monthly_total": 55,
+      "current_monthly_cost": 65,
+      "lines": 1,
+      "os_preference": "Android",
+      "usage": [
+        "battery",
+        "everyday_use"
+      ],
+      "priorities": [
+        "battery",
+        "low_device_cost"
+      ],
+      "wants_new_phone": true,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_008",
+      "name": "Jamie",
+      "budget_target_monthly_total": 110,
+      "current_monthly_cost": 100,
+      "lines": 1,
+      "os_preference": "Android",
+      "usage": [
+        "hotspot",
+        "high_usage",
+        "video"
+      ],
+      "priorities": [
+        "hotspot",
+        "performance"
+      ],
+      "wants_new_phone": false,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_009",
+      "name": "Drew",
+      "budget_target_monthly_total": 50,
+      "current_monthly_cost": 48,
+      "lines": 1,
+      "os_preference": "iOS",
+      "usage": [
+        "everyday_use",
+        "social_media"
+      ],
+      "priorities": [
+        "keep_ios",
+        "budget_conscious"
+      ],
+      "wants_new_phone": true,
+      "wants_trade_in": false
+    },
+    {
+      "id": "customer_010",
+      "name": "Avery",
+      "budget_target_monthly_total": 40,
+      "current_monthly_cost": 42,
+      "lines": 1,
+      "os_preference": "Any",
+      "usage": [
+        "everyday_use"
+      ],
+      "priorities": [
+        "lowest_cost"
+      ],
+      "wants_new_phone": false,
+      "wants_trade_in": false
+    }
+  ],
+  "demo_scenarios": [
+    {
+      "id": "scenario_budget",
+      "transcript": "My bill is too expensive. I want to spend no more than $50 a month, and I mostly use my phone for everyday things.",
+      "expected_behavior": "Prioritize lower-cost plans and devices; ask whether the $50 budget includes a new phone if unclear."
+    },
+    {
+      "id": "scenario_keep_phone",
+      "transcript": "I like my current iPhone and don't want to upgrade. Can I lower my monthly bill?",
+      "expected_behavior": "Recommend plan options only; do not push a new phone."
+    },
+    {
+      "id": "scenario_camera",
+      "transcript": "I take lots of photos and want a better camera, but I don't want the most expensive phone.",
+      "expected_behavior": "Compare mainstream camera-capable phones and explain the cost tradeoff."
+    },
+    {
+      "id": "scenario_family",
+      "transcript": "There are three people in my family. We're all paying separate bills and want to save money.",
+      "expected_behavior": "Consider the multi-line mock plan and compare total household cost, clearly labeling all prices as fictional."
+    },
+    {
+      "id": "scenario_foldable",
+      "transcript": "I want an Android phone that folds and fits in my pocket. My budget is around $80 a month.",
+      "expected_behavior": "Prioritize foldable preference, then verify combined device and plan cost against budget."
+    },
+    {
+      "id": "scenario_no_match",
+      "transcript": "I need a new phone and plan for a total of $20 a month, including the device.",
+      "expected_behavior": "Return no suitable match if no option satisfies the budget; explain the constraint and ask whether the budget can change."
+    }
+  ]
+}

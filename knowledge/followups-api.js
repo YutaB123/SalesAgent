@@ -3,16 +3,16 @@ const crypto=require('node:crypto');
 const inFlight=new Map();
 const email=v=>typeof v==='string'&&/^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/.test(v)&&v.length<255;
 function draft(c,channel){
- const plan=c.recommendedPlan||c.productDiscussed;
- const lines=[`Hi ${c.name===c.contact?'there':c.name},`,c.callHistory?.length?'Thank you for speaking with me.':'I wanted to follow up on your plan options.'];
+ const device=c.recommendedPlan||c.productDiscussed;
+ const lines=[`Hi ${c.name===c.contact?'there':c.name},`,c.callHistory?.length?'Thank you for speaking with me.':'I wanted to follow up on the phone we discussed.'];
  if(c.needs)lines.push(`You mentioned: ${c.needs}`);
  else if(c.summary&&!/^No previous|Analysis pending/.test(c.summary))lines.push(`From our notes: ${c.summary}`);
- if(plan)lines.push(`The plan we can review is ${plan}.`);
+ if(device)lines.push(`The phone we can review is ${device}.`);
  if(c.concerns)lines.push(`I would like to address your questions about ${c.concerns}.`);
  const tasks=(c.followUpTasks||[]).filter(t=>!t.completed).map(t=>t.title);
  if(tasks.length)lines.push(`Next steps: ${tasks.join('; ')}.`);
  lines.push('Would you like to review the details together?');
- return {recipient:channel==='email'?(c.email||''):c.contact,subject:`Your ${plan||'plan'} follow-up`,body:lines.join(channel==='email'?'\n\n':' ')};
+ return {recipient:channel==='email'?(c.email||''):c.contact,subject:`Your ${device||'phone'} details`,body:lines.join(channel==='email'?'\n\n':' ')};
 }
 async function customer(id){const {customers}=await operation('customer-list',{customerId:id});const c=customers[0];if(!c||c.archived)throw Error('Customer is no longer available.');return c;}
 async function send(data){

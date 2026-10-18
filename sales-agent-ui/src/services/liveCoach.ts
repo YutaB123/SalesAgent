@@ -1,5 +1,5 @@
 // The live coach: turns audio into transcript lines, and lines into coaching cards.
-// Ported from the original single-page app (index.html at the repo root). Two ways to feed it audio:
+// Live coaching pipeline. Two ways to feed it audio:
 //   startMic()           one microphone near a speakerphone; Deepgram tells the two voices apart (first voice = rep)
 //   attachTrack(role,t)  an audio track whose speaker is already known (Photon phone call: rep track + customer track)
 import { askCoach, fetchDeepgramToken } from "./coachApi";

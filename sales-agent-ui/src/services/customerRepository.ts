@@ -82,7 +82,7 @@ export const customerRepository: CustomerRepository = {
     const normalized = normalizePhone(phone);
     const existing = read().find(c => { try { return normalizePhone(c.contact) === normalized; } catch { return false; } });
     if (existing) return existing;
-    const next: TrackedCustomer = {id: "phone-" + normalized.slice(1),name:normalized,contact:normalized,company:"",role:"",needs:"",concerns:"",productDiscussed:"Demo Essential",recommendedPlan:"Demo Essential",purchaseStage:"Discovery",followUpDate:"",notes:"",lastContact:"",summary:"No previous calls yet.",callHistory:[]};
+    const next: TrackedCustomer = {id: "phone-" + normalized.slice(1),name:normalized,contact:normalized,company:"",role:"",needs:"",concerns:"",productDiscussed:"Google Pixel 10a",recommendedPlan:"Google Pixel 10a",purchaseStage:"Discovery",followUpDate:"",notes:"",lastContact:"",summary:"No previous calls yet.",callHistory:[]};
     customerRepository.save(next); return next;
   },
   save(next) {

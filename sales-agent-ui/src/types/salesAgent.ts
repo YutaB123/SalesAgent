@@ -1,4 +1,4 @@
-export type NavKey = "plan-database" | "home" | "new-conversation" | "history" | "settings" | "suggestions" | "ongoing" | "summary" | "follow-ups" | "customer-tracking";
+export type NavKey = "home" | "new-conversation" | "history" | "settings" | "suggestions" | "ongoing" | "summary" | "follow-ups" | "customer-tracking";
 export type Speaker = "customer" | "seller";
 export type BuyingIntent = "high" | "medium" | "low" | "unclear";
 export type ConcernCategory = "price" | "features" | "trust" | "timing" | "product_fit" | "comparison" | "other";

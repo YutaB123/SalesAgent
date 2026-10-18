@@ -8,7 +8,7 @@
 const UNIT_WORDS = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
 const TENS_WORDS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
 
-/** Dates and "N days ago" notes in the plan data are not prices; leave them out of the numbers we trust. */
+/** Dates and "N days ago" notes in the product data are not prices; leave them out of the numbers we trust. */
 const withoutDates = (text) => String(text).replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ").replace(/\(\d+ days ago[^)]*\)/g, " ");
 
 /** Numbers written as digits ("$65", "1,200", "2.5"). */
@@ -38,7 +38,7 @@ function wordNumbers(text) {
 const BANNED_CLAIMS = /\bit (only )?takes\b[^.]{0,30}\b(minutes?|seconds?|hours?)\b|\b(guarantee[sd]?|risk[- ]free|cheapest|lowest price|best price|you will save|you'll save|bill will (drop|go down)|cut your bill)\b/i;
 
 /**
- * A card may only use a number over 12 that came from the customer's words, the plan sheet or the plans database,
+ * A card may only use a number over 12 that came from the customer's words, the handset catalog,
  * or that is plain arithmetic on two of those (a sum, a difference) or a per-line multiple (x2 ... x12).
  * Anything else is an invented figure. Returns null when the card is fine, or the reason it was rejected.
  */
@@ -53,7 +53,7 @@ function cardProblem(card, sourceText) {
   }
   const used = [...digitNumbers(text), ...wordNumbers(text)].filter(n => n > 12);
   const invented = used.filter(n => ![...allowed].some(x => Math.abs(x - n) < 0.51));
-  return invented.length ? `number not from the call or plan data: ${invented.join(", ")}` : null;
+  return invented.length ? `number not from the call or product data: ${invented.join(", ")}` : null;
 }
 
 module.exports = { cardProblem, digitNumbers, wordNumbers };

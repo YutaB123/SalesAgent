@@ -2,11 +2,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { cardProblem, wordNumbers } = require('./guard');
 
-// What the card is allowed to be grounded in: the customer's words, the catalog, and the computed comparison.
+// What the card is allowed to be grounded in: customer statements and the handset catalog.
 const SOURCE = [
-  'Customer: I pay 85 a month for two lines. I owe four hundred on my phone. Verizon is 90 a line.',
-  'Essentials 2.0: 1 line $65, 2 lines $100, 3 lines $120. Experience More 2.0: 1 line $90, 2 lines $150.',
-  'Verified comparison: the T-Mobile standard price is $10 per month HIGHER. Verified 2026-10-17 (0 days ago).',
+  'Customer: I want a phone under $600 and can spend up to $500.',
+  'T-Mobile handset catalog: Google Pixel 10a full retail snapshot $499.99. Motorola moto g stylus (2026) full retail snapshot $309.99.',
+  'Checked 2026-10-17. Verify the current price before quoting.',
 ].join(' ');
 const ok = (card) => assert.equal(cardProblem({ ask: '', points: [], ...card }, SOURCE), null);
 const bad = (card, pattern) => assert.match(cardProblem({ ask: '', points: [], ...card }, SOURCE) || '', pattern);
@@ -15,22 +15,21 @@ test('reads numbers written in words', () => {
   assert.deepEqual(wordNumbers('sixty five, a hundred and fifty, four hundred, two lines'), [65, 150, 400, 2]);
 });
 
-test('allows numbers from the catalog and from what the customer said', () => {
-  ok({ agree: 'Essentials 2.0 is $100 for 2 lines.', points: ['Experience More 2.0 is $150 for 2 lines'] });
-  ok({ agree: 'Eighty-five for two lines, got it.', points: ['You owe four hundred on the phone'] });
+test('allows numbers from the handset catalog and what the customer said', () => {
+  ok({ agree: 'The Pixel 10a is listed at $499.99 in this dated snapshot.', points: ['The moto g stylus snapshot is $309.99'] });
+  ok({ agree: 'Your budget is five hundred dollars.', points: [] });
 });
 
-test('allows plain arithmetic on real numbers (a sum, a difference, a per-line multiple)', () => {
-  ok({ agree: 'That is $5 less than your $90.', points: [] });          // 90 - 85
-  ok({ agree: 'Three lines is $195 at $65 a line.', points: [] });      // 65 * 3
+test('allows plain arithmetic on real handset prices', () => {
+  ok({ agree: 'That is $100 less than the $600 budget you gave me.', points: [] });
 });
 
-test('rejects an invented price, discount or saving', () => {
-  bad({ agree: 'Essentials is only $79 a line.' }, /number not from the call or plan data: 79/);
+test('rejects an invented phone price, discount or saving', () => {
+  bad({ agree: 'This phone is only $79.' }, /number not from the call or product data: 79/);
   bad({ agree: 'I can take $40 off for you.' }, /40/);
   bad({ agree: 'I can knock forty dollars off.' }, /40/);
   bad({ agree: 'That is $2,500 a year.' }, /2500/);
-  bad({ agree: 'Their plan is $49 a line.' }, /49/);
+  bad({ agree: 'The phone costs $49.' }, /49/);
 });
 
 test('rejects promises nobody authorised', () => {

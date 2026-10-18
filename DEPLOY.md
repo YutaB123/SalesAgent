@@ -10,7 +10,7 @@ The merged app is a long-running Node server with a Python communications sideca
 4. In the service's Environment settings, paste freshly rotated keys for Anthropic, Deepgram, LiveKit, Photon and Supabase. Do not reuse credentials that were pasted into chat. Create a Deepgram API key with Member permissions or higher so the app can mint short-lived browser tokens.
 5. Wait for the deploy to become Live, then share the service's HTTPS `onrender.com` URL with your teammates.
 
-Render's free web services may sleep when idle. The first visit after an idle period can take a little longer to wake up. The current customer profiles, call summaries and follow-up actions are still stored in each browser's local storage; hosting the app does not yet synchronize that data between teammates. The plan catalog uses the configured Supabase connection when available.
+Render's free web services may sleep when idle. The first visit after an idle period can take a little longer to wake up. Customer profiles, call summaries, follow-up actions, and the handset catalog use the SQLite database at `DEMO_DATABASE_PATH`. Attach a persistent disk and set that variable to its mount path if records must survive restarts and redeploys. The demo is designed for one server instance.
 
 ## Secret handling
 

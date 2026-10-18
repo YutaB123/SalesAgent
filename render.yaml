@@ -39,5 +39,3 @@ services:
         sync: false
       - key: PHOTON_MESSAGE_PLATFORM
         value: sms
-      - key: SUPABASE_DB_URL
-        sync: false

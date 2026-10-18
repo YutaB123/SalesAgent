@@ -2,9 +2,8 @@ import { resolveFollowUpDate } from "./callInsights";
 import type { ConversationTurn, TrackedCustomer } from "../types/salesAgent";
 const TOPICS: [string,RegExp][] = [
  ["Budget", /\$\s*\d[\d,.]*|\b(?:budget|paying|afford|expensive|cheaper|price)\b/i],
- ["Travel", /\b(?:travel|mexico|canada|international|abroad|roaming)\b/i],
- ["Usage", /\b(?:stream|streaming|netflix|hotspot|data|work|coverage|signal)\b/i],
- ["Decision", /\b(?:wife|husband|partner|decid|switch|interested|ready|contract)\w*/i],
+ ["Phone preferences", /\b(?:camera|battery|storage|screen|display|iphone|android|samsung|pixel|motorola|foldable|stylus)\b/i],
+ ["Decision", /\b(?:wife|husband|partner|decid|interested|ready)\w*/i],
  ["Follow-up", /\b(?:call.*(?:tomorrow|later|week)|follow.?up|email|text me|busy)\b/i],
 ];
 export function criticalInformation(turns: ConversationTurn[]): NonNullable<TrackedCustomer["criticalInformation"]> {
@@ -16,7 +15,7 @@ export function criticalInformation(turns: ConversationTurn[]): NonNullable<Trac
 }
 export function requestedNoContact(turns: ConversationTurn[]) { return turns.some(t => t.speaker === "customer" && /\b(?:do not call|don't call|stop calling|remove (?:me|my number)|do not contact|don't contact)\b/i.test(t.text)); }
 export function importantPhrases(text: string): string[] {
- const phrases = [...text.matchAll(/\$\s*\d[\d,]*(?:\.\d{1,2})?(?:\s*(?:a|per)\s*month)?|\b\d+\s*(?:GB|lines?|months?)\b|\b(?:tomorrow|next week|hotspot|coverage|travel|streaming|budget|AT&T|Verizon|T-Mobile|Mexico|Canada)\b/gi)].map(x=>x[0]);
+ const phrases = [...text.matchAll(/\$\s*\d[\d,]*(?:\.\d{1,2})?|\b\d+\s*(?:GB|months?)\b|\b(?:tomorrow|next week|camera|battery|storage|budget|iPhone|Android|Samsung|Pixel|Motorola|T-Mobile)\b/gi)].map(x=>x[0]);
  return [...new Set(phrases)].slice(0,8);
 }
 

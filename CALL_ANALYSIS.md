@@ -7,7 +7,7 @@ The repository contained only README.md when this module was added, so no existi
 ## Team integration
 
 1. Rowan finishes transcription and maps participant IDs to `seller` / `customer`. Use `unknown` if not established; do not guess the role from diarization IDs.
-2. Pass the ordered final turns to this function. Each turn is `{ "speaker": "customer", "text": "I am comparing plans." }`. Optional timestamps can remain in the caller; evidence `turn_id` refers to the original zero-based position.
+2. Pass the ordered final turns to this function. Each turn is `{ "speaker": "customer", "text": "I am comparing two phones." }`. Optional timestamps can remain in the caller; evidence `turn_id` refers to the original zero-based position.
 3. Call from the backend after the call, then return the result as JSON to the frontend. This module does not change the live objection-card pipeline.
 4. For an async FastAPI/LiveKit backend, run the synchronous function in `asyncio.to_thread` to avoid blocking audio processing. Add authentication/rate limits in the team's API layer before exposing paid analysis.
 
@@ -19,7 +19,7 @@ from call_analysis import analyze_call, AnalysisError
 report = await asyncio.to_thread(
     analyze_call,
     [{"speaker": "seller", "text": "What matters most?"},
-     {"speaker": "customer", "text": "Price. I am comparing plans."}],
+     {"speaker": "customer", "text": "Price. I am comparing two phones."}],
     product_context="Use the team's verified product facts here.",
 )
 ```
