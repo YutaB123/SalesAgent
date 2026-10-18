@@ -27,11 +27,11 @@ export async function askCoach(text: string, speaker: CoachRole | undefined, his
   }));
 }
 
-/** Deepgram key for browser streaming. The server only hands it to this computer. */
-export async function fetchDeepgramKey(): Promise<string> {
-  const { key } = await json<{ key: string | null }>(await fetch("/api/dg-key"));
-  if (!key) throw new Error("Deepgram is not configured on the server");
-  return key;
+/** Short-lived Deepgram token for the browser websocket handshake. The long-lived key stays on the server. */
+export async function fetchDeepgramToken(): Promise<string> {
+  const { token } = await json<{ token: string }>(await fetch("/api/dg-token", { cache: "no-store" }));
+  if (!token) throw new Error("Deepgram is not configured on the server");
+  return token;
 }
 
 /** Post-call report (Eva's call_analysis.py, run with Claude). Takes a few seconds. */

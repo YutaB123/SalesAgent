@@ -15,7 +15,6 @@ function operation(command,payload){
 const reply=(res,status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data))};
 async function handle(req,res){
  const route=req.url.split('?')[0];if(!['/api/plan-database','/api/plan-compare'].includes(route))return false;
- if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress)){reply(res,403,{error:'Plan database editing is local-only in this demo'});return true}
  try{
   if(req.method==='GET'&&route==='/api/plan-database'){reply(res,200,await operation('list'));return true}
   if(req.method!=='POST'){reply(res,405,{error:'Method not allowed'});return true}

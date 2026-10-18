@@ -2,7 +2,7 @@
 // Ported from the original single-page app (index.html at the repo root). Two ways to feed it audio:
 //   startMic()           one microphone near a speakerphone; Deepgram tells the two voices apart (first voice = rep)
 //   attachTrack(role,t)  an audio track whose speaker is already known (Photon phone call: rep track + customer track)
-import { askCoach, fetchDeepgramKey } from "./coachApi";
+import { askCoach, fetchDeepgramToken } from "./coachApi";
 import { DeepgramSession, type DgMessage, type DgWord } from "./deepgramSession";
 import type { Card, CardContent, CoachResult, CoachRole, ShownCard } from "../types/coach";
 
@@ -65,21 +65,21 @@ export class LiveCoach {
 
   /** One microphone, two voices. */
   async startMic(): Promise<void> {
-    const key = await fetchDeepgramKey();
+    const token = await fetchDeepgramToken();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } });
     this.ownedStreams.push(stream);
-    await this.open(key, stream, true);
+    await this.open(token, stream, true);
   }
 
   /** An audio track from the phone call, where we already know who is talking. */
   async attachTrack(role: CoachRole, track: MediaStreamTrack): Promise<void> {
-    await this.open(await fetchDeepgramKey(), new MediaStream([track]), false, role);
+    await this.open(await fetchDeepgramToken(), new MediaStream([track]), false, role);
   }
 
-  private async open(key: string, stream: MediaStream, diarize: boolean, fixedRole?: CoachRole): Promise<void> {
+  private async open(token: string, stream: MediaStream, diarize: boolean, fixedRole?: CoachRole): Promise<void> {
     const state: StreamState = { segWords: [], utt: freshUtterance(), fixedRole };
     const session = new DeepgramSession({
-      key, stream, diarize,
+      token, stream, diarize,
       onMessage: (m) => this.onDeepgram(m, state),
       onError: (message) => this.hooks.onError(message),
       onClose: () => this.hooks.onError("Lost the connection to Deepgram."),

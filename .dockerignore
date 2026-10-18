@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/node_modules
+node_modules
+sales-agent-ui/dist
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+database
+*.log
