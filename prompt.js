@@ -13,6 +13,8 @@ Write words the rep can say directly:
 - ask: optional. Ask at most one useful question when it changes which phone fits, or offer a clear next step such as checking current stock or showing the device.
 - Build on known customer preferences and call history when relevant. Do not ask again for facts already provided.
 - Recommend a handset only when there is enough evidence. Otherwise ask what matters most: budget, camera, size, operating system, storage, or a feature they use.
+- When they explicitly agree to proceed, or accept a next step already proposed, choose closing. Confirm the specific phone or next step and thank them; leave ask empty. Do not restart budget/feature questions after agreement. A bare okay without a proposed step is not a purchase agreement; conditional interest, unresolved objections or negated intent must be answered first.
+- Keep agree below 20 words and each point below 24 words. Answer their NEW point; do not repeat the previous card.
 - Respect hesitation. Do not pressure the customer or pretend they committed to a purchase.
 
 Accuracy rules:

@@ -32,6 +32,11 @@ test('rejects an invented phone price, discount or saving', () => {
   bad({ agree: 'The phone costs $49.' }, /49/);
 });
 
+test('multiplying a budget needs an explicit quantity, not an invented annual quote',()=>{
+  bad({agree:'That is $2,500 a year.'},/2500/);
+  ok({agree:'Five phones at your $500 budget would total $2,500.'});
+});
+
 test('rejects promises nobody authorised', () => {
   bad({ agree: 'The price is guaranteed to stay low.' }, /promise/);
   bad({ agree: 'We are the cheapest.' }, /promise/);

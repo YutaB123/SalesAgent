@@ -181,8 +181,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(200, dict(state='ended'))
                 if data.get('callId') != call['callId']:
                     raise ValueError('callId must match the active call')
+                set_call(call['callId'], 'ending')
+                try:
+                    asyncio.run(photon.hangup(call['participant']))
+                except Exception:
+                    with LOCK:
+                        if CURRENT and CURRENT['callId'] == call['callId'] and CURRENT['state'] == 'ending':
+                            CURRENT['state'] = call['state']
+                    raise
                 set_call(call['callId'], 'ended')
-                asyncio.run(photon.hangup(call['participant']))
                 return self.reply(200, dict(callId=call['callId'], state='ended'))
             if path == '/followup':
                 return self.reply(202, photon.send_followup(data.get('recipient'), data.get('text'), data.get('requestId')))

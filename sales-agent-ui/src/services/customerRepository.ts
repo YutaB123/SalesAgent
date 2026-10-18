@@ -83,8 +83,8 @@ async function flush() {
   if (syncing) return; syncing = true; syncFailed = false;
   try {
     for (const [id, record] of Object.entries(readDirty())) {
-      await cloud("/api/customers", record);
-      const pending = readDirty(); if (JSON.stringify(pending[id]) === JSON.stringify(record)) { delete pending[id]; localStorage.setItem(DIRTY_KEY, JSON.stringify(pending)); }
+      const result=await cloud("/api/customers", record);
+      const pending = readDirty(); if (JSON.stringify(pending[id]) === JSON.stringify(record)) { delete pending[id]; localStorage.setItem(DIRTY_KEY, JSON.stringify(pending)); if(result.customer)mergeCloud([result.customer]); }
     }
     window.dispatchEvent(new CustomEvent("customer-sync", {detail: Object.keys(readDirty()).length ? "Saving customer updates…" : "Customer records synced to backend"}));
   } catch { syncFailed = true; window.dispatchEvent(new CustomEvent("customer-sync", {detail:"Saved on this device · backend sync pending"})); }

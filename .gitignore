@@ -16,3 +16,6 @@ sales-agent-ui/dist/
 
 # Local plan database and SQLite journal files
 database/*.sqlite*
+
+# Private CRM migration backups
+database/backups/

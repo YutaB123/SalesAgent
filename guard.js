@@ -39,7 +39,7 @@ const BANNED_CLAIMS = /\bit (only )?takes\b[^.]{0,30}\b(minutes?|seconds?|hours?
 
 /**
  * A card may only use a number over 12 that came from the customer's words, the handset catalog,
- * or that is plain arithmetic on two of those (a sum, a difference) or a per-line multiple (x2 ... x12).
+ * or that is plain arithmetic on two of those (a sum, a difference) or an explicitly stated quantity multiple (x2 ... x12).
  * Anything else is an invented figure. Returns null when the card is fine, or the reason it was rejected.
  */
 function cardProblem(card, sourceText) {
@@ -47,12 +47,13 @@ function cardProblem(card, sourceText) {
   if (BANNED_CLAIMS.test(text)) return "promise we cannot make";
   const base = [...new Set([...digitNumbers(sourceText), ...wordNumbers(sourceText)])].filter(n => n > 12 && n < 100000).slice(0, 80);
   const allowed = new Set(base);
+  const quantities = [...text.matchAll(/\b([2-9]|1[0-2]|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:phones?|handsets?|devices?|lines?)\b/gi)].flatMap(m=>[...digitNumbers(m[1]),...wordNumbers(m[1])]);
   for (const x of base) {
-    for (let n = 2; n <= 12; n++) allowed.add(x * n);
+    for (const n of quantities) allowed.add(x * n);
     for (const y of base) { allowed.add(x + y); allowed.add(Math.abs(x - y)); }
   }
   const used = [...digitNumbers(text), ...wordNumbers(text)].filter(n => n > 12);
-  const invented = used.filter(n => ![...allowed].some(x => Math.abs(x - n) < 0.51));
+  const invented = used.filter(n => ![...allowed].some(x => Math.abs(x - n) < 0.005));
   return invented.length ? `number not from the call or product data: ${invented.join(", ")}` : null;
 }
 

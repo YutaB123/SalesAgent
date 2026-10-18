@@ -19,10 +19,10 @@ export async function fetchCards(): Promise<Card[]> {
 }
 
 /** Ask Claude which card fits a line. Leave `speaker` undefined and Claude works out who is talking. */
-export async function askCoach(text: string, speaker: CoachRole | undefined, history: string[], partial = false, customerId = ""): Promise<CoachResult> {
+export async function askCoach(text: string, speaker: CoachRole | undefined, history: string[], partial = false, customerId = "", signal?: AbortSignal): Promise<CoachResult> {
   // partial = the customer is still mid-sentence: the server may answer "no card yet". A finished line always gets a card.
   return json<CoachResult>(await fetch("/api/match", {
-    method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(30000),
+    method: "POST", headers: { "content-type": "application/json" }, signal: signal ? AbortSignal.any([signal,AbortSignal.timeout(20000)]) : AbortSignal.timeout(20000),
     body: JSON.stringify({ text, speaker, history: history.slice(-10), partial, customerId }),
   }));
 }
@@ -38,10 +38,13 @@ export async function fetchDeepgramToken(): Promise<string> {
 export async function requestPostCall(
   lines: { speaker: CoachRole; text: string }[],
   needs?: unknown,
-  customer?: { name?: string; contact?: string; confirmedChannel?: string; recommendedChannel?: string }
+  customer?: { name?: string; contact?: string; email?: string; doNotContact?: boolean; callDate?: string; confirmedChannel?: string; recommendedChannel?: string }
 ): Promise<PostCallResponse> {
-  return json<PostCallResponse>(await fetch("/api/post-call", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ lines, needs, customer }),
-  }));
+  let response: Response;
+  try { response=await fetch('/api/post-call', {
+    method:'POST',headers:{'content-type':'application/json'},signal:AbortSignal.timeout(100000),body:JSON.stringify({lines,needs,customer})
+  }); } catch(error) { throw Error(error instanceof Error&&error.name==='TimeoutError'
+    ? 'Summary generation timed out. Your transcript is saved; retry analysis.'
+    : 'Cannot reach the summary service. Your transcript is saved on this device; reconnect and retry analysis.'); }
+  return json<PostCallResponse>(response);
 }

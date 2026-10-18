@@ -43,6 +43,8 @@ export interface RecoverySummary {
   conversationSummary: string;
   dealStatus: "at_risk" | "uncertain" | "low_risk";
   dealRiskScore: number;
+  intentConfidence?: "High" | "Medium" | "Low";
+  buyingIntentScore?: number | null;
   scoringMethod: "heuristic_demo";
   scoreExplanation: string;
   riskSignals: { type: string; severity: string; evidence: string; turn_id: number }[];
@@ -52,6 +54,7 @@ export interface RecoverySummary {
 }
 
 export interface FollowUpDraft {
+  timing?: {scheduledAt:string;timeZone:string;basis:"customer_requested"|"suggested";reason:string;evidence:string|null};
   channel: "email" | "message";
   channelReason: string;
   subject: string | null;
@@ -59,7 +62,7 @@ export interface FollowUpDraft {
   personalizationEvidence: string[];
   contactPermissionConfirmed: boolean;
   requiresSellerApproval: boolean;
-  sendStatus: "draft" | "marked_sent_manually";
+  sendStatus: "draft" | "marked_sent_manually" | "accepted";
 }
 
 export interface PostCallRecovery {

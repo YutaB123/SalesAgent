@@ -56,6 +56,9 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBe
   const lookupRef=useRef(onLookupCustomer);lookupRef.current=onLookupCustomer;
   useEffect(()=>{setPreview(null);if(!validNumber){setLookupState("");return;}let cancelled=false;setLookupState("Looking up customer history…");const timer=setTimeout(()=>{void lookupRef.current(number).then(c=>{if(!cancelled){setPreview(c??null);setLookupState(c?"Previous conversations found":"New phone contact · saved automatically when you call");}}).catch(()=>{if(!cancelled)setLookupState("Could not fetch customer history. Retry before calling.");});},450);return()=>{cancelled=true;clearTimeout(timer);};},[number,validNumber]);
   const [callState, setCallState] = useState("idle");
+  const callStateRef=useRef("idle");
+  const endPending=useRef(false);
+  const [endingCall,setEndingCall]=useState(false);
   const [muted, setMuted] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
   const active = !["idle", "ended", "failed"].includes(callState);
@@ -96,7 +99,9 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBe
           if (answered.current) onTrack.current(d.role as CoachRole, d.track as MediaStreamTrack);   // answered already: start now
         });
         comms.addEventListener("state", (e) => {
-          const next = (e as CustomEvent).detail?.call?.state ?? "idle";
+          const reported = (e as CustomEvent).detail?.call?.state ?? "idle";
+          // A restarted sidecar can report no call after a known answered call ended.
+          const next = reported==='idle'&&callStateRef.current==='answered'?'ended':reported;
           if (next === "answered" && !answered.current) {
             answered.current = true;   // the customer picked up: start transcribing both sides
             setOpen(false);
@@ -104,7 +109,8 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBe
             (["rep", "customer"] as CoachRole[]).forEach((role) => { const track = held.current[role]; if (track) onTrack.current(role, track); });
           }
           if (next === "ended" || next === "failed") { answered.current = false; delete held.current.customer; setOpen(true); }   // keep the rep mic for the next call
-          setCallState((previous) => { if (previous !== next && ["ended", "failed"].includes(next) && !["idle", "ended", "failed"].includes(previous)) onEnded.current(); return next; });
+          const previous=callStateRef.current;callStateRef.current=next;setCallState(next);
+          if(previous!==next&&["ended","failed"].includes(next)&&!["idle","ended","failed"].includes(previous))onEnded.current();
         });
         commsRef.current = comms;
         setPhase("ready"); setMessage("Connect your microphone, then enter the customer's number.");
@@ -118,9 +124,23 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBe
 
   const run = (fn: () => Promise<void>) => async () => { try { await fn(); } catch (error) { setMessage(error instanceof Error ? error.message : "Something went wrong."); } };
   const connect = run(async () => { await commsRef.current?.connect(); setPhase("connected"); });
-  const dial = run(async () => { setConfirmCall(false);if(preparing||active||!validNumber)return;setPreparing(true);try {await onBeforeDial(number);setCallState("dialing");try{await commsRef.current?.dial(number);}catch(error){setCallState("failed");onEnded.current();throw error;}}finally{setPreparing(false);} });
-  useEffect(()=>{const end=()=>{if(active)void commsRef.current?.hangup().catch(e=>setMessage(String(e)));else onEnded.current();};window.addEventListener('end-conversation',end);return()=>window.removeEventListener('end-conversation',end);},[active]);
-  const hangup = run(async () => { await commsRef.current?.hangup(); });
+  const dial = run(async () => { setConfirmCall(false);if(preparing||active||!validNumber)return;setPreparing(true);try {await onBeforeDial(number);callStateRef.current="dialing";setCallState("dialing");try{await commsRef.current?.dial(number);}catch(error){callStateRef.current="failed";setCallState("failed");onEnded.current();throw error;}}finally{setPreparing(false);} });
+  const endCall=async()=>{
+    if(endPending.current)return;
+    endPending.current=true;setEndingCall(true);
+    try{
+      if(!['idle','ended','failed'].includes(callStateRef.current)){
+        if(!commsRef.current)throw Error('Call service is unavailable. Hang-up is not confirmed.');
+        await commsRef.current.hangup();
+        callStateRef.current='ended';setCallState('ended');answered.current=false;delete held.current.customer;setOpen(true);
+      }
+      onEnded.current();
+    }catch(error){setOpen(true);setMessage(error instanceof Error?error.message:'Hang-up failed. Please retry.');}
+    finally{endPending.current=false;setEndingCall(false);}
+  };
+  const endRef=useRef(endCall);endRef.current=endCall;
+  useEffect(()=>{const end=()=>void endRef.current();window.addEventListener('end-conversation',end);return()=>window.removeEventListener('end-conversation',end);},[]);
+  const hangup=()=>void endCall();
   const toggleMute = run(async () => { await commsRef.current?.mute(!muted); setMuted(!muted); });
   const enableSound = run(async () => { await commsRef.current?.enableSound(); setSoundBlocked(false); });
 
@@ -134,7 +154,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBe
         {active && !open && <div className="phone-compact-controls">
           <button className="secondary-button" onClick={toggleMute} aria-label={muted ? "Unmute microphone" : "Mute microphone"}>{muted ? <MicOff size={14} /> : <Mic size={14} />}{muted ? "Unmute" : "Mute"}</button>
           {soundBlocked && <button className="secondary-button" onClick={enableSound}><Volume2 size={14} />Enable call sound</button>}
-          <button className="danger-light" onClick={hangup} disabled={!active}><PhoneOff size={14} />Hang up</button>
+          <button className="danger-light" onClick={hangup} disabled={!active||endingCall}><PhoneOff size={14} />Hang up</button>
         </div>}
       </div>
       {open && <div className="phone-body"><CountryPhoneInput country={country} onCountry={setCountry} value={nationalNumber} onChange={setNumber} disabled={active||preparing}/>
@@ -148,7 +168,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onCallAnswered, onBe
             {phase === "connected" && <>
 
               <button className="primary-button call-button" onClick={()=>setConfirmCall(true)} disabled={!validNumber || active || preparing}><Phone size={18} />{preparing||callState==="dialing"?"Calling…":callState==="answered"?"In call":"Call"}</button>
-              <button className="danger-light" onClick={hangup} disabled={!active}><PhoneOff size={14} />Hang up</button>
+              <button className="danger-light" onClick={hangup} disabled={!active||endingCall}><PhoneOff size={14} />Hang up</button>
               <button className="secondary-button" onClick={toggleMute}>{muted ? <MicOff size={14} /> : <Mic size={14} />}{muted ? "Unmute" : "Mute"}</button>
               {soundBlocked && <button className="secondary-button" onClick={enableSound}><Volume2 size={14} />Enable call sound</button>}
             </>}

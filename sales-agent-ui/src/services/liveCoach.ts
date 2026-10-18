@@ -17,7 +17,7 @@ export interface LiveCoachHooks {
 }
 
 /** What we know about the sentence being spoken right now. */
-interface Utterance { id: number; cardId: string | null; out: CoachResult | null; outWords: number; busy: boolean; lastLen: number; calls: number; }
+interface Utterance { requestText?: string; pending?: Promise<CoachResult>; controller?: AbortController; lastAt?: number; id: number; cardId: string | null; out: CoachResult | null; outWords: number; busy: boolean; lastLen: number; calls: number; }
 const freshUtterance = (): Utterance => ({ id: 0, cardId: null, out: null, outWords: 0, busy: false, lastLen: 0, calls: 0 });
 
 /** One audio stream's running state. */
@@ -60,9 +60,10 @@ export class LiveCoach {
    * change the card on screen; older answers are kept for history but never shown.
    */
   private latest = 0;
+  private requestController: AbortController | null = null;
   private customerId = "";
   setCustomer(customerId: string): void { this.customerId = customerId; }
-  private claim(utt: Utterance): void { if (!utt.id) utt.id = ++this.latest; }
+  private claim(utt: Utterance): void { if (!utt.id) { this.requestController?.abort(); utt.id = ++this.latest; } }
 
   constructor(private cards: Card[], private hooks: LiveCoachHooks, private useClaude: boolean) {}
 
@@ -97,6 +98,7 @@ export class LiveCoach {
     this.sessions.forEach((s) => s.stop());
     this.ownedStreams.forEach((s) => s.getTracks().forEach((t) => t.stop()));
     this.sessions = []; this.states = []; this.ownedStreams = [];
+    this.requestController?.abort();this.latest++;
     this.hooks.onLive(null);
   }
 
@@ -135,13 +137,13 @@ export class LiveCoach {
       if (m.is_final) { st.segWords.push(...words); live = st.segWords.map(wordText).join(" "); }
       else live = [...st.segWords.map(wordText), text].join(" ");
       this.hooks.onLive({ role, text: live });
-      this.onInterim(role, live, st.utt);
+      this.onInterim(role, live, st.utt, st.fixedRole);
     }
     if (m.is_final && m.speech_final) this.flush(st);
   }
 
   /** The sentence is still being spoken: get a card up before they finish. */
-  private onInterim(role: CoachRole, text: string, utt: Utterance): void {
+  private onInterim(role: CoachRole, text: string, utt: Utterance, knownRole?: CoachRole): void {
     if (role === "rep") return;
     this.customerText = text;
     this.claim(utt);
@@ -155,9 +157,12 @@ export class LiveCoach {
     // ...and Claude starts writing the real card from their words while they are still talking.
     if (!this.useClaude || utt.busy || utt.calls >= 3) return;
     const n = wordCount(text);
-    if (n < 4 || n < utt.lastLen + 3) return;
+    if (n < 4 || n < utt.lastLen + 4 || Date.now()-(utt.lastAt||0)<250) return;
     utt.busy = true; utt.lastLen = n; utt.calls += 1;
-    askCoach(text, undefined, this.history, true, this.customerId)   // Claude also checks it's the customer talking; a half sentence may get "no card yet"
+    utt.lastAt=Date.now();utt.requestText=text;
+    this.requestController?.abort();utt.controller=new AbortController();this.requestController=utt.controller;
+    utt.pending=askCoach(text, knownRole, [...this.history], true, this.customerId, utt.controller.signal);
+    utt.pending   // Claude also checks it's the customer talking; a half sentence may get "no card yet"
       .then((out) => {
         utt.out = out; utt.outWords = n;
         if (utt.id !== this.latest) return;   // a newer sentence has started: this answer is out of date
@@ -168,7 +173,7 @@ export class LiveCoach {
           this.show(card, content ?? contentOf(card), !!content);
         }
       })
-      .catch(() => { this.hooks.onError("Coaching request failed. Showing guidance while you retry the next customer statement."); })
+      .catch(error => { if(error?.name!=="AbortError")this.hooks.onError("Coaching request failed. Showing guidance while you retry the next customer statement."); })
       .finally(() => { utt.busy = false; });
   }
 
@@ -203,14 +208,18 @@ export class LiveCoach {
     if (local && this.shown?.card.id !== local.id && utt.id === this.latest) this.show(local, contentOf(local), false);
     if (local?.stop) { this.history.push("Customer: " + text); return; }   // a hard no never waits on the network
 
+    const context=[...this.history];
+    this.history.push("Customer: " + text);
     let out: CoachResult | null = null;
     if (this.useClaude) {
       try {
-        // Claude may already have answered while they were still talking: reuse it if the line barely grew.
-        out = utt?.out && wordCount(text) <= utt.outWords + 2 ? utt.out : await askCoach(text, role, this.history, false, this.customerId);
-      } catch { out = null; this.hooks.onError("Coaching request failed. Showing guidance; send the customer statement again to retry."); }
+        // Reuse only an exact final transcript with a valid customer card.
+        const needsClosingCheck=/ready to (?:buy|order|purchase)|take (?:it|this|that)|let.s (?:do it|proceed|go ahead)|sounds good|yes please|perfect/i.test(text);
+        const same=!needsClosingCheck&&utt.requestText?.replace(/[^\p{L}\p{N}]+/gu,"").toLowerCase()===text.replace(/[^\p{L}\p{N}]+/gu,"").toLowerCase();
+        if(same)out=utt.out||(utt.pending?await utt.pending:null);
+        if(!out||out.speaker!==role||!this.cards.some(c=>c.id===out?.card)){this.requestController?.abort();const controller=new AbortController();this.requestController=controller;out=await askCoach(text,role,context,false,this.customerId,controller.signal);}
+      } catch(error) { out = null; if(!(error instanceof Error && error.name==="AbortError"))this.hooks.onError("Coaching request failed. Showing guidance; send the customer statement again to retry."); }
     }
-    this.history.push("Customer: " + text);
     if (utt.id !== this.latest) return;   // a newer sentence has started: do not replace its card with this older answer
     const card = out ? this.cards.find((c) => c.id === out.card) : undefined;
     if (!out || !card) {

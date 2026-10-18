@@ -3,12 +3,13 @@ const { demoOperation } = require('./knowledge/demo-api');
 
 let cached;
 let cachedAt = 0;
+let pending;
 const CACHE_MS = 15_000;
 
 async function getCatalog() {
   if (!cached || Date.now() - cachedAt > CACHE_MS) {
-    cached = await demoOperation('devices');
-    cachedAt = Date.now();
+    if(!pending)pending=demoOperation('devices').then(value=>{cached=value;cachedAt=Date.now();return value;}).finally(()=>{pending=undefined;});
+    await pending;
   }
   return cached;
 }
@@ -27,10 +28,9 @@ async function catalogSheet() {
 }
 
 async function productFacts(text = '') {
-  const sheet = await catalogSheet();
   const lower = String(text).toLowerCase();
-  const match = (await getCatalog()).devices.find((device) => lower.includes(device.name.toLowerCase()));
-  return match ? `${sheet}\nCustomer mentioned ${match.name}; answer about that handset.` : sheet;
+  const match = [...(await getCatalog()).devices].sort((a,b)=>b.name.length-a.name.length).find(device => lower.includes(device.name.toLowerCase()));
+  return match ? `Customer mentioned ${match.name}; answer about that handset using the supplied catalog. This is illustrative mock data, not a live quote.` : '';
 }
 
 async function status() {

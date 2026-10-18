@@ -1,9 +1,9 @@
 /* Owns transport only. STT should subscribe to the audioTrack event. */
 class SalesAgentCommunications extends EventTarget {
-  constructor(){super();this.room=null;this.mic=null;this.callId=null;this.cursor=0;this.timer=null;this.nodes=new Map();this.connecting=false;this.connected=false;this.polling=false;}
+  constructor(){super();this.room=null;this.mic=null;this.callId=null;this.cursor=0;this.timer=null;this.nodes=new Map();this.connecting=false;this.connected=false;this.polling=false;this.lastEndedCallId=null;this.ending=null;}
   emit(type, detail){this.dispatchEvent(new CustomEvent(type,{detail}));}
   async request(route,body){
-    const response=await fetch('/api/comms/'+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json','X-Comms-Action':'1'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(25000)});
+    let response;try{response=await fetch('/api/comms/'+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json','X-Comms-Action':'1'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(25000)});}catch(error){throw Error(error.name==='TimeoutError'?'Call service timed out. Hang-up is not confirmed; retry.':'Cannot reach the call service. Keep this tab open and retry when the local server is running.');}
     const data=await response.json();if(!response.ok)throw Error(data.error||'Communications request failed');return data;
   }
   async limit(promise,ms,message){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(message)),ms)})])}finally{clearTimeout(timer)}}
@@ -30,6 +30,9 @@ class SalesAgentCommunications extends EventTarget {
         const node=this.nodes.get(track.sid);if(node){track.detach(node);node.remove();this.nodes.delete(track.sid)}
         this.emit('audioTrackEnded',{role:'customer',participant:participant.identity,callId:participant.identity.replace('outbound-','')});
       });
+      room.on(sdk.RoomEvent.ParticipantDisconnected,(participant)=>{
+        if(participant.identity?.startsWith('outbound-'))this.finishCall(participant.identity.slice('outbound-'.length));
+      });
       room.on(sdk.RoomEvent.Disconnected,()=>{
         mic.stop();this.connected=false;this.connecting=false;
         if(this.timer)clearInterval(this.timer);this.timer=null;
@@ -47,21 +50,52 @@ class SalesAgentCommunications extends EventTarget {
     }catch(error){expired=true;mic?.stop();room?.disconnect().catch(()=>{});this.room=null;this.mic=null;this.connected=false;throw error}
     finally{this.connecting=false}
   }
+  finishCall(callId){
+    if(!callId||callId===this.lastEndedCallId)return;
+    if(this.callId&&this.callId!==callId)return;
+    this.lastEndedCallId=callId;this.callId=null;
+    this.emit('state',{call:{callId,state:'ended'}});
+  }
+  applyState(state){
+    const id=state.call?.callId;
+    if(id===this.lastEndedCallId){
+      if(this.callId&&this.callId!==id)return;
+      state.call.state='ended';
+    }
+    this.callId=state.call&& !['ended','failed'].includes(state.call.state)?id:null;
+    this.emit('state',state);
+  }
   async poll(){
     if(this.polling)return;this.polling=true;
     try{
+      // Refresh state independently: a missing event response must not hide a remote hang-up.
+      const state=await this.request('state');this.applyState(state);
       const events=await this.request('events?after='+this.cursor);
       if(events.gap)this.emit('eventGap',{message:'Some in-memory events expired. Refresh call state.'});
-      for(const event of events.events)this.emit('callEvent',event);
+      for(const event of events.events){
+        this.emit('callEvent',event);
+        if(event.type==='call.ended'||event.type==='call.failed')this.finishCall(event.callId);
+        if(event.type==='participant.left'&&event.participant?.startsWith('outbound-'))this.finishCall(event.participant.slice('outbound-'.length));
+      }
       this.cursor=events.cursor;
-      const state=await this.request('state');this.callId=state.call?.callId||null;this.emit('state',state);
     }catch(error){this.emit('error',{message:error.message})}finally{this.polling=false}
   }
   async dial(recipient){if(!this.connected)throw Error('Connect microphone first');const call=await this.request('dial',{recipient:recipient.replace(/[\s()-]/g,'')});this.callId=call.callId;this.emit('callStarted',call);return call;}
-  async hangup(){if(this.callId)await this.request('hangup',{callId:this.callId});await this.poll();}
+  async hangup(){
+    if(this.ending)return this.ending;
+    this.ending=(async()=>{
+      let callId=this.callId;
+      if(!callId){const state=await this.request('state');callId=state.call?.callId;}
+      const result=callId?await this.request('hangup',{callId}):{state:'ended'};
+      if(result.state!=='ended')throw Error('Hang-up is not confirmed. Please retry.');
+      this.lastEndedCallId=callId||null;this.callId=null;
+      this.emit('state',{call:{...result,callId:callId||null,state:'ended'}});
+    })();
+    try{await this.ending;}finally{this.ending=null;}
+  }
   async mute(muted){if(muted)await this.mic?.mute();else await this.mic?.unmute();}
   async enableSound(){await this.room?.startAudio();}
   async followup(recipient,text,requestId){return this.request('followup',{recipient,text,requestId});}
-  async disconnect(){await this.hangup();await this.room?.disconnect();this.mic?.stop();if(this.timer)clearInterval(this.timer);this.connected=false;}
+  async disconnect(){try{await this.hangup();}finally{try{await this.room?.disconnect();}finally{this.mic?.stop();if(this.timer)clearInterval(this.timer);this.timer=null;this.connected=false;}}}
 }
 window.SalesAgentCommunications=SalesAgentCommunications;

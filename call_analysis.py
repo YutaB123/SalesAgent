@@ -76,7 +76,7 @@ included too. Evidence existence does NOT guarantee a claim is semantically true
 
 Required JSON shape (all listed fields required; no extra fields):
 {
- "summary": {"text": "short factual summary", "evidence": [Evidence]},
+ "summary": {"text": "concise factual summary (2–3 short sentences, up to 60 words): need, main blocker or decision, and next step", "evidence": [Evidence]},
  "customer_needs": [{"text": "need", "evidence": [Evidence]}],
  "concerns": [{"category": "one allowed concern", "text": "specific concern", "evidence": [Evidence]}],
  "purchase_stage": {"label": "allowed stage or null", "reason": "explanation", "evidence": [Evidence]},
@@ -88,9 +88,14 @@ Required JSON shape (all listed fields required; no extra fields):
    "reason": "explanation", "evidence": [Evidence]}]
 }
 
+Keep summary.text concise: 2–3 short sentences, at most 60 words. Include the customer need, main blocker or latest decision, and agreed next step. Put supporting details in their dedicated report fields.
+
 Purchase labels: Exploring (learning), Comparing (actively weighing options),
 Ready to buy (explicit intention to proceed), Not considering (explicit rejection).
 If unclear or no customer role, label=null and evidence=[]. No forced guessing.
+One explicit customer purchase commitment is sufficient for Ready to buy. Do not
+require multiple quotes. Weigh the latest decision over older hesitation; an
+unresolved condition (if, first, not yet) is not an unconditional commitment.
 Concern labels: Price, Features, Trust, Timing, Product fit, Other. Multi-label is
 allowed across findings; no concern means []. Silence is not a concern.
 If outcome/summary is unavailable, text='Insufficient evidence', evidence=[].

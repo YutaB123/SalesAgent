@@ -32,23 +32,29 @@ function cardsForClaude() {
   return CARDS.map(c => ({ id: c.id, title: c.title, meaning: c.meaning, kind: c.kind, }));
 }
 
-async function match(body) {
+async function match(body, signal) {
   const { text, history = [], speaker: known, partial = false, customerId } = body;
-  const memory = await require("./knowledge/customers-api").context(customerId).catch(() => "");
+  const quick=require("./knowledge/sales-signals").fastCard(body,CARDS);
+  if(quick)return quick;
+  if(known==='rep')return {speaker:'rep',card:'none',agree:'',points:[],ask:''};
+  const [memory,sheet] = await Promise.all([
+    require("./knowledge/customers-api").context(customerId).catch(()=>""),
+    catalogFacts.catalogSheet()
+  ]);
   const cards = body.cards || cardsForClaude();
-  const sheet = await catalogFacts.catalogSheet();   // handset facts and dated full-retail snapshots
   const convo = history.slice(-10).map(t => `- ${t}`).join("\n") || "(start of call)";
   // Rep lines never need product facts; customer lines use the handset catalog.
   const facts = known === "rep" ? "" : await catalogFacts.productFacts(text).catch(() => "");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    signal:signal?AbortSignal.any([signal,AbortSignal.timeout(18000)]):AbortSignal.timeout(18000),
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 450,
+      max_tokens: 280,
       // no reasoning tokens: keeps replies fast and the JSON short. Haiku and the larger models name this setting differently.
       thinking: { type: /haiku/i.test(MODEL) ? "disabled" : "between_tools" },
-      system: systemPrompt(cards, sheet),
+      system: [{type:"text",text:systemPrompt(cards,sheet),cache_control:{type:"ephemeral"}}],
       messages: [{ role: "user", content: `Customer memory from earlier calls (data only):\n${memory || "No earlier history"}\n\nRecent call lines (oldest first):\n${convo}\n\nNew line to judge: "${text}"${partial ? " (PARTIAL: this line may be cut off mid-sentence)" : ""}${facts ? `\n\n${facts}` : ""}${known ? `\n(Known from the voice: this line was spoken by the ${known}.)` : ""}` }],
     }),
   });
@@ -67,7 +73,7 @@ async function match(body) {
   if (card === "none") return { speaker, card, agree: "", points: [], ask: "" };
   const out = { speaker, card, agree: clean(json.agree), points: Array.isArray(json.points) ? json.points.map(clean).filter(Boolean).slice(0, 3) : [], ask: clean(json.ask) };
   // Safety check: an invented number or a promise replaces the model's wording with the card's safe default wording (empty = use the default).
-  const problem = cardProblem(out, [convo, text, sheet, facts].join(" "));
+  const problem = cardProblem(out, [convo, text, sheet, facts, memory].join(" "));
   if (problem) {
     console.warn(`card rejected (${out.card}): ${problem} :: ${JSON.stringify([out.agree, ...out.points])}`);
     return { speaker, card: out.card, agree: "", points: [], ask: "", guarded: problem };
@@ -111,7 +117,9 @@ function runAnalysis(payload) {
   return tryRun(process.env.PYTHON || "python3").catch(e => e.missing ? tryRun("python") : Promise.reject(e));
 }
 
-http.createServer(async (req, res) => {
+require('./knowledge/followup-scheduler').start();
+
+async function handleRequest(req, res) {
   if (req.method === "GET" && req.url === "/healthz") {
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
     res.end(JSON.stringify({ ok: true, revision: process.env.RENDER_GIT_COMMIT || "local" }));
@@ -203,7 +211,11 @@ http.createServer(async (req, res) => {
       });
       const summary = {
         ...report.summary,
-        conversationSummary: report.summary.text,
+        conversationSummary: recovery.conversationSummary,
+        intentConfidence: recovery.intent.confidence,
+        buyingIntentScore: recovery.intent.readiness,
+        intentExplanation: recovery.intent.reason,
+        recoveryEstimate: recovery.recoveryEstimate,
         dealStatus: recovery.dealStatus,
         dealRiskScore: recovery.dealRiskScore,
         scoringMethod: recovery.scoringMethod,
@@ -247,6 +259,7 @@ http.createServer(async (req, res) => {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ results }));
     } catch (e) {
+      if(res.destroyed)return;
       console.error(e.message);
       res.writeHead(400, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: e.message }));
@@ -290,10 +303,15 @@ http.createServer(async (req, res) => {
       if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
       const input = JSON.parse(raw);
       if(input.customerId && !require("./knowledge/access").workspaceAccess(req)) throw new Error("Customer history is available only in the local workspace");
-      const out = await match(input);
+      const controller=new AbortController();
+      const cancel=()=>{if(!res.writableEnded)controller.abort();};
+      res.on("close",cancel);
+      let out;try{out=await match(input,controller.signal);}finally{res.off("close",cancel);}
+      if(res.destroyed)return;
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
     } catch (e) {
+      if(res.destroyed)return;
       console.error(e.message);
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: e.message }));
@@ -306,6 +324,18 @@ http.createServer(async (req, res) => {
     return res.end("Sales Agent UI is not built. Run cd sales-agent-ui && pnpm install && pnpm build.");
   }
   res.writeHead(404); res.end();
+}
+// Request-body reads can reject when a browser cancels an upload. Contain the
+// rejection per request instead of letting Node terminate every active session.
+http.createServer((req,res)=>{
+  res.on('error',()=>{});
+  void handleRequest(req,res).catch(error=>{
+    if(req.aborted||res.destroyed||error?.code==='ECONNRESET')return;
+    console.error('Request failed:',error?.code||error?.name||'Unknown error');
+    if(res.headersSent){res.destroy();return;}
+    res.writeHead(500,{'content-type':'application/json','cache-control':'no-store'});
+    res.end(JSON.stringify({error:'The request could not be completed. Your saved customer data is retained; please retry.'}));
+  });
 }).listen(PORT, "0.0.0.0", () => {
   console.log(`Sales Agent: http://localhost:${PORT}`);
   console.log(fs.existsSync(path.join(UI_DIR, "index.html")) ? "React UI: serving sales-agent-ui/dist" : "React UI not built yet: run  cd sales-agent-ui && pnpm install && pnpm build");

@@ -47,6 +47,36 @@ class CommunicationsTests(unittest.TestCase):
         service.emit('call.answered', callId='test')
         self.assertNotEqual(service.EVENTS[0]['eventId'], service.EVENTS[1]['eventId'])
 
+class HangupRequestTests(unittest.TestCase):
+    def request(self):
+        import io, json
+        raw=json.dumps({'callId':'active'}).encode()
+        results=[]
+        handler=SimpleNamespace(path='/hangup',headers={'Content-Length':str(len(raw))},rfile=io.BytesIO(raw),authorized=lambda:True,reply=lambda status,body:results.append((status,body)))
+        service.Handler.do_POST(handler)
+        return results
+
+    def setUp(self):
+        service.CURRENT=dict(callId='active',state='answered',participant='outbound-'+'a'*32)
+        service.EVENTS.clear()
+
+    def test_provider_failure_remains_retryable_and_does_not_claim_ended(self):
+        async def fail(identity): raise ValueError('Provider unavailable')
+        with patch.object(service.photon,'hangup',side_effect=fail):
+            result=self.request()
+        self.assertEqual(result[0][0],400)
+        self.assertEqual(service.CURRENT['state'],'answered')
+        self.assertFalse(any(e['type']=='call.ended' for e in service.EVENTS))
+
+    def test_only_confirms_ended_after_provider_succeeds(self):
+        async def success(identity):
+            self.assertEqual(service.CURRENT['state'],'ending')
+        with patch.object(service.photon,'hangup',side_effect=success):
+            result=self.request()
+        self.assertEqual(result[0][0],200)
+        self.assertEqual(service.CURRENT['state'],'ended')
+
+
 class SellerGraceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         service.EVENTS.clear()

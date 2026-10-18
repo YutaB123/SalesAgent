@@ -71,14 +71,18 @@ if not seeded:
 
 payload=json.load(sys.stdin) if not sys.stdin.isatty() else {}
 command=sys.argv[1]
-if command=='customer-list': result=list_records(store,payload.get('phone'),payload.get('customerId'))
+if command.startswith('job-'):
+ from followup_jobs import operate
+ result=operate(store,command,payload)
+elif command=='customer-list': result=list_records(store,payload.get('phone'),payload.get('customerId'))
 elif command=='customer-save':
  record=payload['record']; record.pop('isSample',None); result=upsert(store,record)
 elif command in ('followup-claim','followup-result'):
  with store.connection() as conn:
   conn.execute('CREATE TABLE IF NOT EXISTS followup_outbox (id TEXT PRIMARY KEY, record TEXT NOT NULL)')
   if command=='followup-claim':
-   record={**payload,'status':'pending'}
+   from datetime import datetime, timezone
+   record={**payload,'status':'pending','createdAt':datetime.now(timezone.utc).isoformat()}
    cursor=conn.execute('INSERT OR IGNORE INTO followup_outbox VALUES (?,?)',(payload['requestId'],json.dumps(record)))
    row=conn.execute('SELECT record FROM followup_outbox WHERE id=?',(payload['requestId'],)).fetchone()
    result={'created':cursor.rowcount==1,'record':json.loads(row['record'])}
@@ -87,6 +91,11 @@ elif command in ('followup-claim','followup-result'):
    record={**json.loads(row['record']),**payload}
    conn.execute('UPDATE followup_outbox SET record=? WHERE id=?',(json.dumps(record),payload['requestId']))
    result={'record':record}
+elif command=='followup-history':
+ with store.connection() as conn:
+  exists=conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='followup_outbox'").fetchone()
+  rows=conn.execute("SELECT record FROM followup_outbox WHERE json_extract(record,'$.customerId')=?",(payload['customerId'],)).fetchall() if exists else []
+  result={'messages':[json.loads(row['record']) for row in rows]}
 elif command=='devices':
  with store.connection() as conn: result={'devices':[json.loads(row['record']) for row in conn.execute('SELECT record FROM demo_devices ORDER BY id')]}
 else: raise ValueError('Unknown demo operation')
