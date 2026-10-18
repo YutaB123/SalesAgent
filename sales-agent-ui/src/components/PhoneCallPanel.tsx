@@ -4,7 +4,7 @@ import {parsePhoneNumberFromString, getCountryCallingCode} from 'libphonenumber-
 import type {CountryCode} from 'libphonenumber-js';
 import type { TrackedCustomer } from "../types/salesAgent";
 import { useEffect, useRef, useState } from "react";
-import { Phone, PhoneOff, Mic, MicOff, Volume2 } from "lucide-react";
+import { Phone, PhoneOff, Mic, MicOff, Volume2, ChevronDown, ChevronUp } from "lucide-react";
 import type { CoachRole } from "../types/coach";
 
 // Dial the customer through Photon / LiveKit (Zoe's communications module, /communications/*).
@@ -97,9 +97,10 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
           const next = (e as CustomEvent).detail?.call?.state ?? "idle";
           if (next === "answered" && !answered.current) {
             answered.current = true;   // the customer picked up: start transcribing both sides
+            setOpen(false);
             (["rep", "customer"] as CoachRole[]).forEach((role) => { const track = held.current[role]; if (track) onTrack.current(role, track); });
           }
-          if (next === "ended" || next === "failed") { answered.current = false; delete held.current.customer; }   // keep the rep mic for the next call
+          if (next === "ended" || next === "failed") { answered.current = false; delete held.current.customer; setOpen(true); }   // keep the rep mic for the next call
           setCallState((previous) => { if (previous !== next && ["ended", "failed"].includes(next) && !["idle", "ended", "failed"].includes(previous)) onEnded.current(); return next; });
         });
         commsRef.current = comms;
@@ -122,7 +123,17 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
 
   return (
     <section className="phone-panel">
-      <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}><Phone size={15} />Start conversation</button>
+      <div className={`phone-panel-heading${active && !open ? " phone-panel-heading-active" : ""}`}>
+        <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+          {active && !open ? <><span className="call-live-dot" />{callState === "answered" ? "Call connected" : callState === "dialing" ? "Calling customer…" : "Call in progress"}</> : <><Phone size={15} />Start conversation</>}
+          {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+        {active && !open && <div className="phone-compact-controls">
+          <button className="secondary-button" onClick={toggleMute} aria-label={muted ? "Unmute microphone" : "Mute microphone"}>{muted ? <MicOff size={14} /> : <Mic size={14} />}{muted ? "Unmute" : "Mute"}</button>
+          {soundBlocked && <button className="secondary-button" onClick={enableSound}><Volume2 size={14} />Enable call sound</button>}
+          <button className="danger-light" onClick={hangup} disabled={!active}><PhoneOff size={14} />Hang up</button>
+        </div>}
+      </div>
       {open && <div className="phone-body"><CountryPhoneInput country={country} onCountry={setCountry} value={nationalNumber} onChange={setNumber} disabled={active||preparing}/>
         <div className="phone-preview"><strong>{preview?.name||"New customer"}</strong><span>Phone to discuss · {preview?.recommendedPlan||preview?.productDiscussed||"To confirm"}</span><small>{lookupState}</small></div>
         {phase === "unavailable" && <p className="phone-note">{message} <br />Phone calling needs the Photon and LiveKit settings in <code>.env</code> and the communications service running (see <code>communications/README.md</code>). You can still use the microphone and speakerphone instead.</p>}
