@@ -114,7 +114,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
 
   return (
     <section className="phone-panel">
-      <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}><Phone size={15} />Start conversation / 拨电话</button>
+      <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}><Phone size={15} />Start conversation</button>
       {open && <div className="phone-body"><label className="phone-customer-field">Customer phone number<input type="tel" disabled={active} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="+1 425 555 0123" aria-label="Customer phone number" /></label>
         <div className="phone-preview"><strong>{preview?.name||"New customer"}</strong><span>Recommended plan · {preview?.recommendedPlan||preview?.productDiscussed||"To confirm"}</span><small>{lookupState}</small></div>
         {phase === "unavailable" && <p className="phone-note">{message} <br />Phone calling needs the Photon and LiveKit settings in <code>.env</code> and the communications service running (see <code>communications/README.md</code>). You can still use the microphone and speakerphone instead.</p>}
