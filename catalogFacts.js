@@ -60,6 +60,7 @@ function describePlan(plan, maxAge) {
 
 /** The catalog as short text for the model's instructions. */
 async function catalogSheet() {
+  if(process.env.SALES_DATA_MODE !== "real"){const {plans}=await require("./knowledge/demo-api").demoOperation("plans");return "FICTIONAL DEMO ONLY. Sell these fictional plans, never represent them as real carrier offers. No discounts are authorized. " + JSON.stringify(plans);}
   const catalog = await getCatalog();
   if (cache.sheet) return cache.sheet;
   const maxAge = catalog.maxAgeDays ?? 14;
@@ -90,6 +91,7 @@ const COMPARING = /\b(cheaper|cheap|less|more expensive|offered|better deal|comp
  * comparable bill (line count, service-only charge, before taxes and fees), so the model never has to guess a number.
  */
 async function planFacts(text, history = []) {
+  if(process.env.SALES_DATA_MODE !== "real")return catalogSheet();
   const lower = String(text);
   if (!COMPARING.test(lower) && !canonicalCarrier(lower)) return "";
   const catalog = await getCatalog();
@@ -117,6 +119,7 @@ async function planFacts(text, history = []) {
 
 /** For /api/status and the Plan Database page. */
 async function status() {
+  if(process.env.SALES_DATA_MODE !== "real")return {storage:"demo-sqlite",count:3,fictional:true};
   const catalog = await getCatalog();
   const dates = (catalog.plans || []).map((p) => p.verifiedOn).filter(Boolean).sort();
   const oldest = dates[0] || null;

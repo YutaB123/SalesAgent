@@ -13,7 +13,8 @@ try {
   }
 } catch {}
 
-const { CARDS } = require("./cards.js");
+const { CARDS: ORIGINAL_CARDS } = require("./cards.js");
+const CARDS = process.env.SALES_DATA_MODE === 'real' ? ORIGINAL_CARDS : ORIGINAL_CARDS.map(c=>({...c,agree:c.stop?'Understood, I will stop contacting you.':'Let’s find a demo plan that fits your needs.',points:['Fictional demo plans only.'],ask:c.stop?'':c.ask.replace(/T-Mobile/g,'our demo service')}));
 const { systemPrompt } = require("./prompt.js");
 const { cardProblem } = require("./guard.js");
 const catalogFacts = require("./catalogFacts.js");

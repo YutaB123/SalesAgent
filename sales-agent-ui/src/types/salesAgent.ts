@@ -35,6 +35,13 @@ export interface TrackedCustomer {
   summary: string;
   callHistory: CustomerCallHistory[];
   isSample?: boolean;
+  recommendedPlan?: string;
+  confidence?: "High" | "Medium" | "Low";
+  followUpTasks?: FollowUpTask[];
+  followUpPending?: boolean;
+  recommendedChannel?: "email" | "message";
+  confirmedChannel?: "email" | "message";
+  communicationScore?: number | null;
   criticalInformation?: { text: string; quote: string; kind: string }[];
   followUpRecommendation?: { date: string; reason: string; basis: "agreed" | "suggested" };
   doNotContact?: boolean;

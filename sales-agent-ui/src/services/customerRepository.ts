@@ -1,7 +1,6 @@
-import { customer } from "../data/mockData";
 import type { CustomerCallHistory, TrackedCustomer } from "../types/salesAgent";
 
-const STORAGE_KEY = "sales-agent-customers-v1";
+const STORAGE_KEY = "sales-agent-demo-customers-v2";
 
 export interface CustomerRepository {
   list(): TrackedCustomer[];
@@ -12,68 +11,34 @@ export interface CustomerRepository {
   remove(customerId: string): TrackedCustomer[];
   appendCall(customerId: string, entry: CustomerCallHistory): TrackedCustomer[];
   /** Update a few fields on a customer (used to copy a post-call report onto the record). */
-  patch(customerId: string, fields: Partial<Pick<TrackedCustomer, "purchaseStage" | "readiness" | "followUpDate" | "needs" | "concerns" | "notes" | "criticalInformation" | "followUpRecommendation" | "doNotContact">>): TrackedCustomer[];
+  patch(customerId: string, fields: Partial<Pick<TrackedCustomer, "purchaseStage" | "readiness" | "followUpDate" | "needs" | "concerns" | "notes" | "criticalInformation" | "followUpRecommendation" | "doNotContact" | "summary" | "confidence" | "followUpTasks" | "followUpPending" | "recommendedChannel" | "confirmedChannel" | "recommendedPlan" | "communicationScore">>): TrackedCustomer[];
   /** Fill in a saved call's summary, concerns and next steps once the post-call report is ready. */
   updateCall(customerId: string, callId: string, patch: Partial<Pick<CustomerCallHistory, "summary" | "concerns" | "nextSteps">>): TrackedCustomer[];
 }
 
-const sampleCustomers: TrackedCustomer[] = [
-  {
-    id: customer.id,
-    name: customer.name,
-    company: "Sample customer",
-    role: customer.role,
-    contact: "",
-    needs: customer.needs.join(", "),
-    concerns: customer.concerns.join(", "),
-    productDiscussed: "ProBook X1",
-    purchaseStage: customer.purchaseStage,
-    followUpDate: "",
-    notes: "Sample account for the Sales Agent demo.",
-    readiness: 7,
-    lastContact: "",
-    summary: "Sample account. No call summary has been saved yet.",
-    callHistory: [],
-    isSample: true,
-  },
-  {
-    id: "demo-02", name: "Jordan Lee", company: "Sample company", role: "Operations Manager",
-    contact: "", needs: "Coordinate a team deployment", concerns: "Deployment timing",
-    productDiscussed: "Team Laptop Bundle", purchaseStage: "Decision", followUpDate: "",
-    notes: "Sample account for the Sales Agent demo.", readiness: 8, lastContact: "",
-    summary: "Sample account. No call summary has been saved yet.", callHistory: [], isSample: true,
-  },
-  {
-    id: "demo-03", name: "Taylor Morgan", company: "Sample company", role: "Design Lead",
-    contact: "", needs: "Check product fit for design work", concerns: "Feature fit",
-    productDiscussed: "StudioBook Air", purchaseStage: "Discovery", followUpDate: "",
-    notes: "Sample account for the Sales Agent demo.", readiness: 5, lastContact: "",
-    summary: "Sample account. No call summary has been saved yet.", callHistory: [], isSample: true,
-  },
-];
-
 function read(): TrackedCustomer[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return sampleCustomers;
+    if (!stored) return [];
     const parsed: unknown = JSON.parse(stored);
     if (Array.isArray(parsed)) return (parsed as TrackedCustomer[]).filter(c=>!c.archived);
   } catch {
     // Keep the sample experience available when storage is unavailable or malformed.
   }
-  return sampleCustomers;
+  return [];
 }
 
 function write(customers: TrackedCustomer[]) {
   const previous = read();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
   window.dispatchEvent(new Event("customers-updated"));
-  for (const c of customers) if (!c.isSample && JSON.stringify(c) !== JSON.stringify(previous.find(x => x.id === c.id))) {
+  for (const c of customers) if (JSON.stringify(c) !== JSON.stringify(previous.find(x => x.id === c.id))) {
     const dirty = readDirty(); dirty[c.id] = c; localStorage.setItem(DIRTY_KEY, JSON.stringify(dirty));
   }
+  window.dispatchEvent(new CustomEvent("customer-sync", {detail:"Saving customer updates…"}));
   void flush();
 }
-const DIRTY_KEY = "sales-agent-customer-outbox-v1";
+const DIRTY_KEY = "sales-agent-demo-outbox-v2";
 function readDirty(): Record<string, TrackedCustomer> { try { return JSON.parse(localStorage.getItem(DIRTY_KEY) || "{}"); } catch { return {}; } }
 let syncing = false;
 let syncFailed = false;
@@ -81,6 +46,7 @@ async function cloud(url: string, record?: TrackedCustomer) {
   const response = await fetch(url, record ? { signal: AbortSignal.timeout(25000), method: "POST", headers: {"Content-Type":"application/json", "X-Customer-Action":"1"}, body: JSON.stringify({record}) } : {signal:AbortSignal.timeout(25000)});
   const data = await response.json(); if (!response.ok) throw Error(data.error || "Customer sync failed"); return data;
 }
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
 async function flush() {
   if (syncing) return; syncing = true; syncFailed = false;
   try {
@@ -88,17 +54,17 @@ async function flush() {
       await cloud("/api/customers", record);
       const pending = readDirty(); if (JSON.stringify(pending[id]) === JSON.stringify(record)) { delete pending[id]; localStorage.setItem(DIRTY_KEY, JSON.stringify(pending)); }
     }
-    window.dispatchEvent(new CustomEvent("customer-sync", {detail: Object.keys(readDirty()).length ? "Saving customer updates…" : "Customer records synced to team database"}));
-  } catch { syncFailed = true; window.dispatchEvent(new CustomEvent("customer-sync", {detail:"Saved on this device · cloud sync pending"})); }
-  finally { syncing = false; if(!syncFailed && Object.keys(readDirty()).length) void flush(); }
+    window.dispatchEvent(new CustomEvent("customer-sync", {detail: Object.keys(readDirty()).length ? "Saving customer updates…" : "Customer records synced to backend"}));
+  } catch { syncFailed = true; window.dispatchEvent(new CustomEvent("customer-sync", {detail:"Saved on this device · backend sync pending"})); }
+  finally { syncing = false; if(syncFailed && !retryTimer) retryTimer=setTimeout(()=>{retryTimer=undefined;void flush();},5000); if(!syncFailed && Object.keys(readDirty()).length) void flush(); }
 }
 export function normalizePhone(value: string): string {
   let digits = value.replace(/\D/g, ""); if (digits.startsWith("0")) throw Error("Enter a valid phone number with country code"); if (digits.length === 10) digits = "1" + digits;
   if (!/^[1-9]\d{7,14}$/.test(digits)) throw Error("Enter a valid phone number with country code");
   return "+" + digits;
 }
-function mergeCloud(records: TrackedCustomer[]) {
- const dirty = readDirty(); const merged = new Map(read().map(c => [c.id, c]));
+function mergeCloud(records: TrackedCustomer[], replace = false) {
+ const dirty = readDirty(); const merged = new Map((replace ? Object.values(dirty) : read()).map(c => [c.id, c]));
  for (const c of records) if (!dirty[c.id]) merged.set(c.id, c);
  localStorage.setItem(STORAGE_KEY, JSON.stringify([...merged.values()])); window.dispatchEvent(new Event("customers-updated"));
 }
@@ -110,13 +76,13 @@ export function createCustomerId() {
 
 export const customerRepository: CustomerRepository = {
   list: read,
-  async hydrate() { await flush(); const data = await cloud("/api/customers"); mergeCloud(data.customers); },
+  async hydrate() { await flush(); const data = await cloud("/api/customers"); mergeCloud(data.customers, true); },
   async lookupPhone(phone) { const normalized = normalizePhone(phone); const data = await cloud("/api/customers?phone=" + encodeURIComponent(normalized)); mergeCloud(data.customers); return data.customers[0] ?? read().find(c => { try { return normalizePhone(c.contact) === normalized; } catch { return false; } }); },
   ensurePhone(phone) {
     const normalized = normalizePhone(phone);
     const existing = read().find(c => { try { return normalizePhone(c.contact) === normalized; } catch { return false; } });
     if (existing) return existing;
-    const next: TrackedCustomer = {id: "phone-" + normalized.slice(1),name:normalized,contact:normalized,company:"",role:"",needs:"",concerns:"",productDiscussed:"T-Mobile plans",purchaseStage:"Discovery",followUpDate:"",notes:"",lastContact:"",summary:"No previous calls yet.",callHistory:[]};
+    const next: TrackedCustomer = {id: "phone-" + normalized.slice(1),name:normalized,contact:normalized,company:"",role:"",needs:"",concerns:"",productDiscussed:"Demo Essential",recommendedPlan:"Demo Essential",purchaseStage:"Discovery",followUpDate:"",notes:"",lastContact:"",summary:"No previous calls yet.",callHistory:[]};
     customerRepository.save(next); return next;
   },
   save(next) {
