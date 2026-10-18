@@ -14,7 +14,9 @@ try {
 } catch {}
 
 const { CARDS: ORIGINAL_CARDS } = require("./cards.js");
-const CARDS = process.env.SALES_DATA_MODE === 'real' ? ORIGINAL_CARDS : ORIGINAL_CARDS.map(c=>({...c,agree:c.stop?'Understood, I will stop contacting you.':'Let’s find a demo plan that fits your needs.',points:['Fictional demo plans only.'],ask:c.stop?'':c.ask.replace(/T-Mobile/g,'our demo service')}));
+// Keep each card's response distinct even when the catalog uses fictional demo plans.
+const demoText=text=>text.replace(/T-Mobile/g,'our demo service');
+const CARDS = process.env.SALES_DATA_MODE === 'real' ? ORIGINAL_CARDS : ORIGINAL_CARDS.map(c=>({...c,agree:demoText(c.agree),points:c.points.map(demoText),ask:demoText(c.ask)}));
 const { systemPrompt } = require("./prompt.js");
 const { cardProblem } = require("./guard.js");
 const catalogFacts = require("./catalogFacts.js");
@@ -110,11 +112,12 @@ function runAnalysis(payload) {
 http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/healthz") {
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-    res.end(JSON.stringify({ ok: true }));
+    res.end(JSON.stringify({ ok: true, revision: process.env.RENDER_GIT_COMMIT || "local" }));
     return;
   }
   if (await require("./knowledge/refresh").handle(req, res)) return;
   if (await require("./knowledge/customers-api").handle(req, res)) return;
+  if (await require("./knowledge/followups-api").handle(req, res)) return;
   if (await require("./knowledge/api.js").handle(req, res)) return;
   if (await require("./communications/proxy.js").handleCommunications(req, res)) return;
   // The original single-page live coach, kept as a fallback at /classic.

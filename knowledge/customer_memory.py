@@ -10,7 +10,7 @@ def normalize_phone(value):
     digits = re.sub(r'\D', '', raw)
     if digits.startswith('0'):
         raise ValueError('Enter a valid phone number with country code')
-    if len(digits) == 10:
+    if len(digits) == 10 and not raw.startswith('+'):
         digits = '1' + digits
     if not 8 <= len(digits) <= 15 or digits.startswith('0'):
         raise ValueError('Enter a valid phone number with country code')

@@ -19,6 +19,8 @@ export interface CustomerCallHistory {
   transcript?: ConversationTurn[];
 }
 export interface TrackedCustomer {
+  email?: string;
+  followUpDrafts?: Partial<Record<"email"|"message", {recipient:string;subject:string;body:string}>>;
   id: string;
   name: string;
   company: string;

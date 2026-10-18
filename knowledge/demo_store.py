@@ -35,6 +35,19 @@ command=sys.argv[1]
 if command=='customer-list': result=list_records(store,payload.get('phone'),payload.get('customerId'))
 elif command=='customer-save':
  record=payload['record']; record.pop('isSample',None); result=upsert(store,record)
+elif command in ('followup-claim','followup-result'):
+ with store.connection() as conn:
+  conn.execute('CREATE TABLE IF NOT EXISTS followup_outbox (id TEXT PRIMARY KEY, record TEXT NOT NULL)')
+  if command=='followup-claim':
+   record={**payload,'status':'pending'}
+   cursor=conn.execute('INSERT OR IGNORE INTO followup_outbox VALUES (?,?)',(payload['requestId'],json.dumps(record)))
+   row=conn.execute('SELECT record FROM followup_outbox WHERE id=?',(payload['requestId'],)).fetchone()
+   result={'created':cursor.rowcount==1,'record':json.loads(row['record'])}
+  else:
+   row=conn.execute('SELECT record FROM followup_outbox WHERE id=?',(payload['requestId'],)).fetchone()
+   record={**json.loads(row['record']),**payload}
+   conn.execute('UPDATE followup_outbox SET record=? WHERE id=?',(json.dumps(record),payload['requestId']))
+   result={'record':record}
 elif command=='plans':
  with store.connection() as conn: result={'plans':[json.loads(row['record']) for row in conn.execute('SELECT record FROM demo_plans')]}
 else: raise ValueError('Unknown demo operation')
