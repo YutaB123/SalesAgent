@@ -10,7 +10,7 @@ export interface DgMessage {
 }
 
 export interface DeepgramOptions {
-  key: string;
+  token: string;
   stream: MediaStream;
   /** true = one microphone with two voices: Deepgram labels the speakers. false = this stream is one known person. */
   diarize: boolean;
@@ -58,11 +58,11 @@ export class DeepgramSession {
       interim_results: "true", endpointing: "250", utterance_end_ms: "1000",
       diarize: String(this.opts.diarize),
     });
-    const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ["token", this.opts.key]);
+    const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ["bearer", this.opts.token]);
     this.ws = ws;
     await new Promise<void>((resolve, reject) => {
       ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("Could not reach Deepgram. Check the key in .env."));
+      ws.onerror = () => reject(new Error("Could not reach Deepgram. Check the server key and its Member permissions."));
     });
     const source = ctx.createMediaStreamSource(this.opts.stream);
     this.node = new AudioWorkletNode(ctx, "pcm");

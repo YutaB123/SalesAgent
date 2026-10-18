@@ -2,7 +2,7 @@ const {operation}=require('./api');
 async function handle(req,res){
  const url=new URL(req.url,'http://localhost');if(url.pathname!=='/api/customers')return false;
  const send=(status,data)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(data))};
- if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress)){send(403,{error:'Customer memory is available only in the local workspace.'});return true;}
+ if(!require('./access').workspaceAccess(req)){send(403,{error:'Customer memory is available only in the local workspace.'});return true;}
  try{
   if(req.method==='GET'){send(200,await operation('customer-list',{phone:url.searchParams.get('phone'),customerId:url.searchParams.get('id')}));return true;}
   if(req.method!=='POST'){send(405,{error:'Method not allowed'});return true;}

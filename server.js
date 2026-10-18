@@ -3,6 +3,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { spawn } = require("child_process");
 
 // optional .env file with ANTHROPIC_API_KEY=...
@@ -21,6 +22,41 @@ const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
 const PORT = process.env.PORT || 3000;
+
+// Shared team access for the hosted demo. Local development stays friction-free.
+function secureEqual(a, b) {
+  const left = crypto.createHash("sha256").update(String(a)).digest();
+  const right = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(left, right);
+}
+
+function requireTeamAccess(req, res) {
+  const username = process.env.SITE_USERNAME;
+  const password = process.env.SITE_PASSWORD;
+  if (!username || !password) {
+    if (process.env.NODE_ENV !== "production") return true;
+    res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" });
+    res.end(JSON.stringify({ error: "Team access is not configured on the server." }));
+    return false;
+  }
+
+  const header = req.headers.authorization || "";
+  const encoded = header.match(/^Basic ([A-Za-z0-9+/=]+)$/)?.[1];
+  if (encoded && encoded.length <= 2048) {
+    const credentials = Buffer.from(encoded, "base64").toString("utf8");
+    const separator = credentials.indexOf(":");
+    if (separator >= 0 && secureEqual(credentials.slice(0, separator), username)
+      && secureEqual(credentials.slice(separator + 1), password)) { req.teamAuthorized = true; return true; }
+  }
+
+  res.writeHead(401, {
+    "content-type": "text/plain; charset=utf-8",
+    "cache-control": "no-store",
+    "www-authenticate": 'Basic realm="Sales Agent Team", charset="UTF-8"',
+  });
+  res.end("Enter the shared Sales Agent team login to continue.");
+  return false;
+}
 
 // The card list in the shape the prompt uses (the page sends the same thing).
 function cardsForClaude() {
@@ -72,8 +108,6 @@ async function match(body) {
 
 const UI_DIR = path.join(__dirname, "sales-agent-ui", "dist");
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".json": "application/json", ".woff2": "font/woff2" };
-const isLocal = req => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
-
 // Serves the built React app. Unknown non-API paths fall back to index.html so client-side routing works.
 function serveUi(req, res) {
   if (!fs.existsSync(path.join(UI_DIR, "index.html"))) return false;
@@ -109,6 +143,12 @@ function runAnalysis(payload) {
 }
 
 http.createServer(async (req, res) => {
+  if (req.method === "GET" && req.url === "/healthz") {
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (!requireTeamAccess(req, res)) return;
   if (await require("./knowledge/refresh").handle(req, res)) return;
   if (await require("./knowledge/customers-api").handle(req, res)) return;
   if (await require("./knowledge/api.js").handle(req, res)) return;
@@ -177,11 +217,31 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ claude: !!KEY, model: MODEL, deepgram: !!DG_KEY, plans: await catalogFacts.status() }));
   }
-  // Local demo only: hands the Deepgram key to the page on localhost so the browser can stream audio directly.
-  if (req.method === "GET" && req.url === "/api/dg-key") {
-    if (!isLocal(req)) { res.writeHead(403); return res.end(); }
-    res.writeHead(DG_KEY ? 200 : 404, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ key: DG_KEY || null }));
+  // Mint a 30-second Deepgram token for the browser's websocket handshake; never return the long-lived API key.
+  if (req.method === "GET" && req.url === "/api/dg-token") {
+    if (!DG_KEY) {
+      res.writeHead(404, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({ error: "Deepgram is not configured on the server." }));
+    }
+    try {
+      const response = await fetch("https://api.deepgram.com/v1/auth/grant", {
+        method: "POST",
+        headers: { authorization: `Token ${DG_KEY}`, "content-type": "application/json" },
+        body: JSON.stringify({ ttl_seconds: 30 }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const grant = await response.json().catch(() => ({}));
+      if (!response.ok || !grant.access_token) {
+        console.error(`Deepgram token grant failed (${response.status})`);
+        res.writeHead(502, { "content-type": "application/json", "cache-control": "no-store" });
+        return res.end(JSON.stringify({ error: "Could not create a temporary transcription token. Check the Deepgram key permissions." }));
+      }
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({ token: grant.access_token, expiresIn: grant.expires_in || 30 }));
+    } catch {
+      res.writeHead(502, { "content-type": "application/json", "cache-control": "no-store" });
+      return res.end(JSON.stringify({ error: "Deepgram token service is unavailable." }));
+    }
   }
   if (req.method === "POST" && req.url === "/api/match") {
     let raw = "";
@@ -189,7 +249,7 @@ http.createServer(async (req, res) => {
     try {
       if (!KEY) throw new Error("ANTHROPIC_API_KEY not set");
       const input = JSON.parse(raw);
-      if(input.customerId && !isLocal(req)) throw new Error("Customer history is available only in the local workspace");
+      if(input.customerId && !require("./knowledge/access").workspaceAccess(req)) throw new Error("Customer history is available only in the local workspace");
       const out = await match(input);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
@@ -206,7 +266,7 @@ http.createServer(async (req, res) => {
     return res.end(fs.readFileSync(path.join(__dirname, "index.html")));
   }
   res.writeHead(404); res.end();
-}).listen(PORT, () => {
+}).listen(PORT, "0.0.0.0", () => {
   console.log(`Sales Agent: http://localhost:${PORT}   (classic live coach: /classic)`);
   console.log(fs.existsSync(path.join(UI_DIR, "index.html")) ? "React UI: serving sales-agent-ui/dist" : "React UI not built yet: run  cd sales-agent-ui && pnpm install && pnpm build");
   console.log(KEY ? `Claude matching ON (${MODEL})` : "ANTHROPIC_API_KEY not set: falling back to keyword matching");

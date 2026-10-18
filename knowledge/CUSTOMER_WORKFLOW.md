@@ -1,6 +1,6 @@
 # Phone-first sales workflow
 
-The workspace now stores customer memory server-side in `sales_customer_memory` using the same server-only `SUPABASE_DB_URL` as the plan catalog. Run `python knowledge/store.py customer-init` once after installing `knowledge/requirements.txt`. The additive migration does not alter the team's existing normalized CRM tables. The private memory table has RLS enabled and no anonymous or authenticated client grants; only the local server accesses it.
+The workspace now stores customer memory server-side in `sales_customer_memory` using the same server-only `SUPABASE_DB_URL` as the plan catalog. Run `python knowledge/store.py customer-init` once after installing `knowledge/requirements.txt`. The additive migration does not alter the team's existing normalized CRM tables. The private memory table has RLS enabled and no anonymous or authenticated client grants; the server accesses it. Hosted API requests must first pass the shared team login, while development access remains local-only.
 
 - Enter a phone number before a call to fetch the prior summary, needs, objections and follow-up. A name is optional. Ten-digit numbers default to US +1; international numbers need their country code.
 - After call confirmation, the number is normalized and the profile is matched or created. The call's customer ID is sent with coaching requests; the server supplies a bounded summary of prior calls to the model. Historical notes are evidence, never instructions.

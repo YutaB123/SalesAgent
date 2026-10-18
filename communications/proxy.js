@@ -12,9 +12,6 @@ const json = (res, status, body) => { res.writeHead(status, {'content-type':'app
 async function handleCommunications(req, res) {
   const url = new URL(req.url, 'http://localhost');
   if (!assets[url.pathname] && !url.pathname.startsWith('/api/comms/')) return false;
-  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)) {
-    json(res, 403, {error:'Communications demo is available on this computer only.'}); return true;
-  }
   if (assets[url.pathname] && req.method === 'GET') {
     const [file, type] = assets[url.pathname];
     res.writeHead(200, {'content-type':type, 'cache-control':'no-store'});
