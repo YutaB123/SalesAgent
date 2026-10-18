@@ -48,6 +48,7 @@ export interface TrackedCustomer {
   followUpRecommendation?: { date: string; reason: string; basis: "agreed" | "suggested" };
   doNotContact?: boolean;
   archived?: boolean;
+  trackingGroup?: "active" | "history";
 }
 export interface ConversationTurn { id: string; speaker: Speaker; text: string; time: string; source?: ConversationSource; }
 export interface ResponseSuggestion { id: string; title: string; text: string; strategy: string; explanation: string; verify: string; recommended?: boolean; }

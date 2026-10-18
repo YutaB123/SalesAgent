@@ -11,7 +11,7 @@ export interface CustomerRepository {
   remove(customerId: string): TrackedCustomer[];
   appendCall(customerId: string, entry: CustomerCallHistory): TrackedCustomer[];
   /** Update a few fields on a customer (used to copy a post-call report onto the record). */
-  patch(customerId: string, fields: Partial<Pick<TrackedCustomer, "purchaseStage" | "readiness" | "followUpDate" | "needs" | "concerns" | "notes" | "criticalInformation" | "followUpRecommendation" | "doNotContact" | "summary" | "confidence" | "followUpTasks" | "followUpPending" | "recommendedChannel" | "confirmedChannel" | "recommendedPlan" | "communicationScore">>): TrackedCustomer[];
+  patch(customerId: string, fields: Partial<Pick<TrackedCustomer, "purchaseStage" | "readiness" | "followUpDate" | "needs" | "concerns" | "notes" | "criticalInformation" | "followUpRecommendation" | "doNotContact" | "summary" | "confidence" | "followUpTasks" | "followUpPending" | "recommendedChannel" | "confirmedChannel" | "recommendedPlan" | "communicationScore" | "trackingGroup">>): TrackedCustomer[];
   /** Fill in a saved call's summary, concerns and next steps once the post-call report is ready. */
   updateCall(customerId: string, callId: string, patch: Partial<Pick<CustomerCallHistory, "summary" | "concerns" | "nextSteps">>): TrackedCustomer[];
 }
@@ -105,6 +105,7 @@ export const customerRepository: CustomerRepository = {
       if (item.id !== customerId) return item;
       return {
         ...item,
+        trackingGroup: item.doNotContact ? "history" as const : "active" as const,
         lastContact: entry.date,
         productDiscussed: entry.productDiscussed || item.productDiscussed,
         concerns: entry.concerns.length ? entry.concerns.join(", ") : item.concerns,
