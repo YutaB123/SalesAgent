@@ -25,7 +25,7 @@ interface StreamState { segWords: DgWord[]; utt: Utterance; fixedRole?: CoachRol
 
 const wordCount = (text: string) => text.trim().split(/\s+/).length;
 const wordText = (w: DgWord) => w.punctuated_word || w.word;
-const contentOf = (card: Card): CardContent => ({ agree: card.agree, points: card.points, ask: card.stop ? "" : "I can show you an option that fits, with the full terms in writing." });
+const contentOf = (card: Card): CardContent => ({ agree: card.agree, points: card.points, ask: card.stop ? "" : card.ask });
 
 /** Claude's rewritten card text, or null if it didn't send any. */
 function toContent(out: CoachResult): CardContent | null {
@@ -46,6 +46,7 @@ export function matchKeywords(cards: Card[], text: string): Card | null {
 
 export class LiveCoach {
   private history: string[] = [];
+  private customerText = "";
   private shown: ShownCard | null = null;
   private sessions: DeepgramSession[] = [];
   private states: StreamState[] = [];
@@ -142,6 +143,7 @@ export class LiveCoach {
   /** The sentence is still being spoken: get a card up before they finish. */
   private onInterim(role: CoachRole, text: string, utt: Utterance): void {
     if (role === "rep") return;
+    this.customerText = text;
     this.claim(utt);
     // A keyword card goes up instantly (generic wording)...
     const keyword = matchKeywords(this.cards, text);
@@ -190,6 +192,7 @@ export class LiveCoach {
   private async processFinal(role: CoachRole, text: string, given?: Utterance): Promise<void> {
     if (role === "rep") { this.history.push("Rep: " + text); return; }
     const utt = given ?? freshUtterance();   // a typed line has no spoken sentence behind it
+    this.customerText = text;
     this.claim(utt);
     const local = matchKeywords(this.cards, text);
     // Show useful guidance immediately, even during introductions (the "discovery" opening card).
@@ -227,7 +230,7 @@ export class LiveCoach {
   }
 
   private show(card: Card, content: CardContent, tailored: boolean): void {
-    this.shown = { card, content, tailored };
+    this.shown = { card, content, tailored, customerText:this.customerText };
     this.hooks.onCard(this.shown);
   }
 }

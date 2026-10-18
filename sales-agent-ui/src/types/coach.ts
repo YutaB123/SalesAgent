@@ -19,7 +19,7 @@ export interface Card {
 /** The words on a card. Claude can rewrite these to fit what the customer actually said. */
 export interface CardContent { agree: string; points: string[]; ask: string; }
 
-export interface ShownCard { card: Card; content: CardContent; tailored: boolean; }
+export interface ShownCard { card: Card; content: CardContent; tailored: boolean; customerText?: string; }
 
 /** Reply from POST /api/match. */
 export interface CoachResult { speaker: CoachRole; card: string; agree: string; points: string[]; ask: string; }

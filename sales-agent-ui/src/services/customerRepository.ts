@@ -59,7 +59,7 @@ async function flush() {
   finally { syncing = false; if(syncFailed && !retryTimer) retryTimer=setTimeout(()=>{retryTimer=undefined;void flush();},5000); if(!syncFailed && Object.keys(readDirty()).length) void flush(); }
 }
 export function normalizePhone(value: string): string {
-  let digits = value.replace(/\D/g, ""); if (digits.startsWith("0")) throw Error("Enter a valid phone number with country code"); if (digits.length === 10) digits = "1" + digits;
+  let digits = value.replace(/\D/g, ""); if (digits.startsWith("0")) throw Error("Enter a valid phone number with country code"); if (digits.length === 10 && !value.trim().startsWith("+")) digits = "1" + digits;
   if (!/^[1-9]\d{7,14}$/.test(digits)) throw Error("Enter a valid phone number with country code");
   return "+" + digits;
 }

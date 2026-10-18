@@ -1,3 +1,7 @@
+import {CountryPhoneInput} from './CountryPhoneInput';
+import {ConfirmDialog} from './ConfirmDialog';
+import {parsePhoneNumberFromString, getCountryCallingCode} from 'libphonenumber-js';
+import type {CountryCode} from 'libphonenumber-js';
 import type { TrackedCustomer } from "../types/salesAgent";
 import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Mic, MicOff, Volume2 } from "lucide-react";
@@ -40,12 +44,16 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
   const [open, setOpen] = useState(true);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
-  const [number, setNumber] = useState("");
+  const [nationalNumber, setNumber] = useState("");
+  const [country,setCountry]=useState<CountryCode>('US');
+  const [confirmCall,setConfirmCall]=useState(false);
+  const number=parsePhoneNumberFromString(nationalNumber,country)?.number||('+'+getCountryCallingCode(country)+nationalNumber.replace(/\D/g,''));
+  const validNumber=parsePhoneNumberFromString(number)?.isPossible()??false;
   const [preview,setPreview]=useState<TrackedCustomer|null>(null);
   const [lookupState,setLookupState]=useState("");
   const [preparing,setPreparing]=useState(false);
   const lookupRef=useRef(onLookupCustomer);lookupRef.current=onLookupCustomer;
-  useEffect(()=>{setPreview(null);if(number.replace(/\D/g,"").length<8){setLookupState("");return;}let cancelled=false;setLookupState("Looking up customer history…");const timer=setTimeout(()=>{void lookupRef.current(number).then(c=>{if(!cancelled){setPreview(c??null);setLookupState(c?"Previous conversations found":"New phone contact · saved automatically when you call");}}).catch(()=>{if(!cancelled)setLookupState("Could not fetch customer history. Retry before calling.");});},450);return()=>{cancelled=true;clearTimeout(timer);};},[number]);
+  useEffect(()=>{setPreview(null);if(!validNumber){setLookupState("");return;}let cancelled=false;setLookupState("Looking up customer history…");const timer=setTimeout(()=>{void lookupRef.current(number).then(c=>{if(!cancelled){setPreview(c??null);setLookupState(c?"Previous conversations found":"New phone contact · saved automatically when you call");}}).catch(()=>{if(!cancelled)setLookupState("Could not fetch customer history. Retry before calling.");});},450);return()=>{cancelled=true;clearTimeout(timer);};},[number,validNumber]);
   const [callState, setCallState] = useState("idle");
   const [muted, setMuted] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
@@ -106,7 +114,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
 
   const run = (fn: () => Promise<void>) => async () => { try { await fn(); } catch (error) { setMessage(error instanceof Error ? error.message : "Something went wrong."); } };
   const connect = run(async () => { await commsRef.current?.connect(); setPhase("connected"); });
-  const dial = run(async () => { if (!window.confirm(`Call ${number}?`)) return;setPreparing(true);try {await onBeforeDial(number);setCallState("dialing");try{await commsRef.current?.dial(number);}catch(error){setCallState("failed");throw error;}}finally{setPreparing(false);} });
+  const dial = run(async () => { setConfirmCall(false);if(preparing||active||!validNumber)return;setPreparing(true);try {await onBeforeDial(number);setCallState("dialing");try{await commsRef.current?.dial(number);}catch(error){setCallState("failed");onEnded.current();throw error;}}finally{setPreparing(false);} });
   useEffect(()=>{const end=()=>{if(active)void commsRef.current?.hangup().catch(e=>setMessage(String(e)));else onEnded.current();};window.addEventListener('end-conversation',end);return()=>window.removeEventListener('end-conversation',end);},[active]);
   const hangup = run(async () => { await commsRef.current?.hangup(); });
   const toggleMute = run(async () => { await commsRef.current?.mute(!muted); setMuted(!muted); });
@@ -115,7 +123,7 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
   return (
     <section className="phone-panel">
       <button className="phone-toggle" onClick={() => setOpen(!open)} aria-expanded={open}><Phone size={15} />Start conversation</button>
-      {open && <div className="phone-body"><label className="phone-customer-field">Customer phone number<input type="tel" disabled={active} value={number} onChange={(e) => setNumber(e.target.value)} placeholder="+1 425 555 0123" aria-label="Customer phone number" /></label>
+      {open && <div className="phone-body"><CountryPhoneInput country={country} onCountry={setCountry} value={nationalNumber} onChange={setNumber} disabled={active||preparing}/>
         <div className="phone-preview"><strong>{preview?.name||"New customer"}</strong><span>Recommended plan · {preview?.recommendedPlan||preview?.productDiscussed||"To confirm"}</span><small>{lookupState}</small></div>
         {phase === "unavailable" && <p className="phone-note">{message} <br />Phone calling needs the Photon and LiveKit settings in <code>.env</code> and the communications service running (see <code>communications/README.md</code>). You can still use the microphone and speakerphone instead.</p>}
         {phase === "checking" && <p className="phone-note">Checking phone setup…</p>}
@@ -125,15 +133,16 @@ export function PhoneCallPanel({ onAudioTrack, onCallEnded, onBeforeDial, onLook
             {phase === "ready" && <button className="secondary-button" onClick={connect}><Mic size={14} />Connect microphone</button>}
             {phase === "connected" && <>
 
-              <button className="primary-button" onClick={dial} disabled={!number.trim() || active || preparing}><Phone size={14} />Call</button>
+              <button className="primary-button call-button" onClick={()=>setConfirmCall(true)} disabled={!validNumber || active || preparing}><Phone size={18} />{preparing||callState==="dialing"?"Calling…":callState==="answered"?"In call":"Call"}</button>
               <button className="danger-light" onClick={hangup} disabled={!active}><PhoneOff size={14} />Hang up</button>
               <button className="secondary-button" onClick={toggleMute}>{muted ? <MicOff size={14} /> : <Mic size={14} />}{muted ? "Unmute" : "Mute"}</button>
               {soundBlocked && <button className="secondary-button" onClick={enableSound}><Volume2 size={14} />Enable call sound</button>}
             </>}
           </div>
-          {phase === "connected" && <p className="phone-note">{callState === "dialing" ? <>Calling… the app starts listening <b>when the customer answers</b>.</> : callState === "answered" ? <>Customer answered. <b>Listening to both sides.</b></> : <>Ready to call. The app starts listening when the customer answers.</>} Use a headset so the customer's voice does not echo back.</p>}
+
         </>}
       </div>}
+      {confirmCall&&<ConfirmDialog title={`Call ${preview?.name||number}?`} onCancel={()=>setConfirmCall(false)} onConfirm={()=>void dial()}><p>{number}</p></ConfirmDialog>}
     </section>
   );
 }
