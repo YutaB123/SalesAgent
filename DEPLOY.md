@@ -6,9 +6,9 @@ The merged app is a long-running Node server with a Python communications sideca
 
 1. Push this branch to GitHub and open `https://render.com/blueprint/new`.
 2. Connect `YutaB123/SalesAgent`, select branch `main`, and apply the `render.yaml` Blueprint.
-3. In the Blueprint prompt, set `SITE_USERNAME` and a strong team-only `SITE_PASSWORD`. Render generates `COMMUNICATIONS_SERVICE_TOKEN` for the private Node-to-Python connection.
+3. Render generates `COMMUNICATIONS_SERVICE_TOKEN` for the private Node-to-Python connection. The demo site is public and does not prompt visitors for a team password.
 4. In the service's Environment settings, paste freshly rotated keys for Anthropic, Deepgram, LiveKit, Photon and Supabase. Do not reuse credentials that were pasted into chat. Create a Deepgram API key with Member permissions or higher so the app can mint short-lived browser tokens.
-5. Wait for the deploy to become Live, then share the service's HTTPS `onrender.com` URL and the team login with your teammates. The browser will ask for the username and password.
+5. Wait for the deploy to become Live, then share the service's HTTPS `onrender.com` URL with your teammates.
 
 Render's free web services may sleep when idle. The first visit after an idle period can take a little longer to wake up. The current customer profiles, call summaries and follow-up actions are still stored in each browser's local storage; hosting the app does not yet synchronize that data between teammates. The plan catalog uses the configured Supabase connection when available.
 

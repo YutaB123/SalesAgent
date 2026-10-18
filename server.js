@@ -3,7 +3,6 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { spawn } = require("child_process");
 
 // optional .env file with ANTHROPIC_API_KEY=...
@@ -22,41 +21,6 @@ const KEY = process.env.ANTHROPIC_API_KEY;
 const DG_KEY = process.env.DEEPGRAM_API_KEY;
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";   // ~1.4 s per card; follows the card-writing rules far better than haiku (~1.1 s). Set CLAUDE_MODEL=claude-haiku-5-5 for the fastest, lowest-cost option.
 const PORT = process.env.PORT || 3000;
-
-// Shared team access for the hosted demo. Local development stays friction-free.
-function secureEqual(a, b) {
-  const left = crypto.createHash("sha256").update(String(a)).digest();
-  const right = crypto.createHash("sha256").update(String(b)).digest();
-  return crypto.timingSafeEqual(left, right);
-}
-
-function requireTeamAccess(req, res) {
-  const username = process.env.SITE_USERNAME;
-  const password = process.env.SITE_PASSWORD;
-  if (!username || !password) {
-    if (process.env.NODE_ENV !== "production") return true;
-    res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" });
-    res.end(JSON.stringify({ error: "Team access is not configured on the server." }));
-    return false;
-  }
-
-  const header = req.headers.authorization || "";
-  const encoded = header.match(/^Basic ([A-Za-z0-9+/=]+)$/)?.[1];
-  if (encoded && encoded.length <= 2048) {
-    const credentials = Buffer.from(encoded, "base64").toString("utf8");
-    const separator = credentials.indexOf(":");
-    if (separator >= 0 && secureEqual(credentials.slice(0, separator), username)
-      && secureEqual(credentials.slice(separator + 1), password)) { req.teamAuthorized = true; return true; }
-  }
-
-  res.writeHead(401, {
-    "content-type": "text/plain; charset=utf-8",
-    "cache-control": "no-store",
-    "www-authenticate": 'Basic realm="Sales Agent Team", charset="UTF-8"',
-  });
-  res.end("Enter the shared Sales Agent team login to continue.");
-  return false;
-}
 
 // The card list in the shape the prompt uses (the page sends the same thing).
 function cardsForClaude() {
@@ -148,7 +112,6 @@ http.createServer(async (req, res) => {
     res.end(JSON.stringify({ ok: true }));
     return;
   }
-  if (!requireTeamAccess(req, res)) return;
   if (await require("./knowledge/refresh").handle(req, res)) return;
   if (await require("./knowledge/customers-api").handle(req, res)) return;
   if (await require("./knowledge/api.js").handle(req, res)) return;
